@@ -1,0 +1,22 @@
+{
+  "name": "@drdreo/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "drdreo's portable agent harness and workstation configuration",
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./pi/extensions"
+    ],
+    "skills": [
+      "./agents/skills"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}

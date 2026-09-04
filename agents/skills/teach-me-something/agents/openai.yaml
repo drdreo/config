@@ -1,0 +1,14 @@
+interface:
+  display_name: Teach Me Something
+  short_description: One useful codebase lesson in under five minutes
+  default_prompt: Use $teach-me-something to teach me one interesting thing from the
+    current repository in under five minutes.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+AGENTS_HOME=${AGENTS_HOME:-"$HOME/.agents"}
+PI_CODING_AGENT_DIR=${PI_CODING_AGENT_DIR:-"$HOME/.pi/agent"}
+CONFIG_BACKUP_DIR=${CONFIG_BACKUP_DIR:-"$HOME/.config-backups/drdreo-config"}
+
+SOURCE_ROOTS=(
+  "$ROOT/agents/skills"
+  "$ROOT/pi/extensions"
+)
+TARGET_ROOTS=(
+  "$AGENTS_HOME/skills"
+  "$PI_CODING_AGENT_DIR/extensions"
+)
+
+usage() {
+  cat <<'EOF'
+Manage drdreo's portable configuration.
+
+Usage:
+  ./bin/config apply [--dry-run]  Link managed items into the home directory
+  ./bin/config status             Show linked, missing, and conflicting items
+  ./bin/config unapply            Remove only links owned by this repository
+  ./bin/config add skill PATH     Copy a skill into agents/skills
+  ./bin/config add pi-extension PATH
+                                 Copy an extension into pi/extensions
+  ./bin/config help
+
+Existing files are never deleted. `apply` moves conflicts into a timestamped
+backup under ~/.config-backups/drdreo-config before creating a link.
+
+Environment overrides:
+  AGENTS_HOME, PI_CODING_AGENT_DIR, CONFIG_BACKUP_DIR
+EOF
+}
+
+is_repo_link() {
+  local source=$1 target=$2 linked
+  [[ -L "$target" ]] || return 1
+  linked=$(readlink "$target")
+  [[ "$linked" == "$source" ]]
+}
+
+for_each_item() {
+  local callback=$1 source_root target_root source target index
+
+  for index in "${!SOURCE_ROOTS[@]}"; do
+    source_root=${SOURCE_ROOTS[$index]}
+    target_root=${TARGET_ROOTS[$index]}
+    [[ -d "$source_root" ]] || continue
+
+    while IFS= read -r -d '' source; do
+      target="$target_root/$(basename "$source")"
+      "$callback" "$source" "$target"
+    done < <(
+      find "$source_root" -mindepth 1 -maxdepth 1 \
+        ! -name '.DS_Store' ! -name '.gitkeep' -print0 | sort -z
+    )
+  done
+}
+
+status_item() {
+  local source=$1 target=$2
+  MANAGED_COUNT=$((MANAGED_COUNT + 1))
+
+  if is_repo_link "$source" "$target"; then
+    printf '[linked]   %s\n' "$target"
+  elif [[ -e "$target" || -L "$target" ]]; then
+    printf '[conflict] %s\n' "$target"
+    ISSUE_COUNT=$((ISSUE_COUNT + 1))
+  else
+    printf '[missing]  %s\n' "$target"
+    ISSUE_COUNT=$((ISSUE_COUNT + 1))
+  fi
+}
+
+status_all() {
+  MANAGED_COUNT=0
+  ISSUE_COUNT=0
+  for_each_item status_item
+  printf '\n%s managed item(s), %s needing apply.\n' "$MANAGED_COUNT" "$ISSUE_COUNT"
+  [[ "$ISSUE_COUNT" -eq 0 ]]
+}
+
+backup_target() {
+  local target=$1 backup
+  backup="$BACKUP_ROOT/${target#/}"
+  mkdir -p "$(dirname "$backup")"
+  mv "$target" "$backup"
+  BACKUP_USED=1
+  printf 'backed up %s -> %s\n' "$target" "$backup"
+}
+
+apply_item() {
+  local source=$1 target=$2
+
+  if is_repo_link "$source" "$target"; then
+    printf 'unchanged  %s\n' "$target"
+    return
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    if [[ -e "$target" || -L "$target" ]]; then
+      printf 'would back up and link %s\n' "$target"
+    else
+      printf 'would link %s\n' "$target"
+    fi
+    return
+  fi
+
+  mkdir -p "$(dirname "$target")"
+  if [[ -e "$target" || -L "$target" ]]; then
+    backup_target "$target"
+  fi
+  ln -s "$source" "$target"
+  printf 'linked     %s -> %s\n' "$target" "$source"
+}
+
+apply_all() {
+  DRY_RUN=0
+  if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=1
+    shift
+  fi
+  if [[ "$#" -ne 0 ]]; then
+    printf 'Unknown apply argument: %s\n\n' "$1" >&2
+    usage >&2
+    return 2
+  fi
+
+  BACKUP_ROOT="$CONFIG_BACKUP_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  BACKUP_USED=0
+  for_each_item apply_item
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf '\nDry run only; no files changed.\n'
+  elif [[ "$BACKUP_USED" -eq 1 ]]; then
+    printf '\nBackups: %s\n' "$BACKUP_ROOT"
+  fi
+}
+
+unapply_item() {
+  local source=$1 target=$2
+  if is_repo_link "$source" "$target"; then
+    rm "$target"
+    printf 'unlinked   %s\n' "$target"
+  elif [[ -e "$target" || -L "$target" ]]; then
+    printf 'preserved  %s (not owned by this repository)\n' "$target"
+  fi
+}
+
+unapply_all() {
+  for_each_item unapply_item
+}
+
+add_item() {
+  local kind=${1:-} item=${2:-} destination name
+  if [[ -z "$kind" || -z "$item" || "$#" -ne 2 ]]; then
+    usage >&2
+    return 2
+  fi
+
+  item=${item%/}
+  if [[ ! -e "$item" && ! -L "$item" ]]; then
+    printf 'Path does not exist: %s\n' "$item" >&2
+    return 1
+  fi
+
+  case "$kind" in
+    skill) destination="$ROOT/agents/skills" ;;
+    pi-extension) destination="$ROOT/pi/extensions" ;;
+    *)
+      printf 'Unknown item type: %s\n' "$kind" >&2
+      return 2
+      ;;
+  esac
+
+  name=$(basename "$item")
+  if [[ -e "$destination/$name" || -L "$destination/$name" ]]; then
+    printf 'Already managed: %s\n' "$destination/$name" >&2
+    return 1
+  fi
+
+  mkdir -p "$destination"
+  cp -RH "$item" "$destination/$name"
+  find "$destination/$name" -name '.DS_Store' -delete 2>/dev/null || true
+  printf 'added      %s\n' "$destination/$name"
+  printf 'Review it, commit it, then run: ./bin/config apply\n'
+}
+
+command=${1:-help}
+shift || true
+
+case "$command" in
+  apply) apply_all "$@" ;;
+  status) status_all ;;
+  unapply) unapply_all ;;
+  add) add_item "$@" ;;
+  help|-h|--help) usage ;;
+  *)
+    printf 'Unknown command: %s\n\n' "$command" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
