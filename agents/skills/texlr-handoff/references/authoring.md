@@ -5,13 +5,14 @@
 ```tex
 \documentclass{texlr}
 
-\title{Growth cofounder workstreams}
-\author{Planning agent}
+\title{Project handoff}
+\author{Authoring agent}
 \date{\today}
-\project{Growth}
 \status{Handoff}
-\repository{https://github.com/example/project}
-\revision{main}
+% Optional: fill these only with verified values.
+% \project{Project name}
+% \repository{https://github.com/owner/repository}
+% \revision{commit SHA}
 
 \begin{document}
 \maketitle
@@ -19,8 +20,8 @@
 \section{Executive summary}
 State the purpose, current position, and most important next action.
 
-\section{Workstreams}
-Organize the source material into a structure that supports execution.
+\section{Current state}
+Explain the relevant changes or findings and the evidence behind them.
 
 \begin{callout}[Open question]
 State an unresolved issue without presenting it as a decision.
@@ -35,11 +36,34 @@ Name concrete actions. Include owners or dates only when supported by the input.
 \end{document}
 ```
 
-Omit empty metadata commands. `\title`, `\author`, and `\date` should always be
-present. Use `\runningtitle{Short title}` when the full title is too long for a
-page header.
+This is a structural example, not content to copy verbatim. Replace the title
+and body with the actual material. Set `\author` to the real author or an honest
+agent role, not an invented person. `\today` is the document generation date,
+not evidence of when the work happened; use a verified date or `\date{}` when
+appropriate. Omit unknown project, repository, and revision metadata. The class
+defaults to “Handoff”; use `\status{}` to suppress it or set a supported status.
+Use `\runningtitle{Short title}` when the full title is too long for a page header.
+
+## Structure for the reader
+
+Choose sections that answer the recipient's questions; these are prompts, not
+mandatory templates:
+
+- Implementation handoff: outcome, important changes, decisions and rationale,
+  verification actually performed, remaining risks, and next actions.
+- Architecture brief: problem and constraints, system boundaries/data flow,
+  alternatives and tradeoffs, recommendation, and open decisions.
+- Research report or plan: question and scope, sourced findings, uncertainties,
+  proposed actions, dependencies, and decisions needed.
+
+Keep detailed paths, commands, and evidence where the next person can find them.
+Move long supporting material to an appendix only when it helps the main flow.
 
 ## Useful components
+
+The `texlr` class already loads the packages used below and provides their
+styling. Do not copy or recreate its class file or install another document
+theme; Texlr supplies `texlr.cls` in the source bundle.
 
 ### Decision
 
@@ -47,6 +71,9 @@ page header.
 \decision{Use a single acquisition funnel}{This reduces measurement ambiguity
 while the first channel is being validated.}
 ```
+
+Keep callouts and decisions brief: these boxes cannot break across pages.
+Use ordinary sections or lists for long explanations.
 
 ### Code or commands
 
@@ -178,8 +205,10 @@ Use `\textasciitilde{}` and `\textasciicircum{}` for literal tilde and caret.
 Use `\textbackslash{}` for a literal backslash. Put URLs in `\url{...}` rather
 than escaping them manually. Use `\path{...}` for file paths, route paths, and
 long code identifiers so LaTeX can break them safely; reserve `\texttt{...}`
-for short inline tokens — a `\texttt` token longer than roughly 25 characters
-cannot break across lines and will overflow the margin.
+for short inline tokens. `\texttt` does not provide useful breakpoints within
+long identifiers; whether it overflows depends on the available width. In a
+narrow table cell, shorten the display label and put the full path below the
+table rather than forcing a long unbreakable token into the column.
 
 Do not paste Markdown fences, headings, tables, or emphasis syntax into the
 LaTeX source. Convert them to LaTeX environments and commands.
@@ -195,6 +224,29 @@ When converting a plan or Markdown source:
 5. Keep detailed checklists as lists or tables; do not bury them in prose.
 6. Include a final section for decisions needed or immediate next actions when
    the source supports it.
+
+## Visual inspection
+
+A successful compile is not a layout check. Read the published log, then render
+the PDF to temporary images outside the authoring/source directory. For example,
+with Ghostscript available on `PATH`:
+
+```bash
+preview_dir=$(mktemp -d)
+gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r120 \
+  -sOutputFile="$preview_dir/page-%03d.png" /absolute/path/to/handoff.pdf
+```
+
+Open every page with the harness's image-viewing tool. Check title and header
+fit, page breaks, whitespace, table wrapping, missing glyphs, clipped content,
+and diagram labels. Confirm figures land near the text that discusses them.
+Use close-up renders if labels are too small to judge. Keep preview images out
+of the delivered source bundle; remove your temporary previews after review.
+
+If `gs` is not exposed on `PATH`, use an available PDF renderer such as
+`pdftoppm`, or run it through Nix (`nix shell nixpkgs#ghostscript --command gs ...`).
+If rendering or image viewing is unavailable, disclose that visual verification
+is blocked; do not equate a clean log with a visually checked document.
 
 ## Failure handling
 
