@@ -76,6 +76,13 @@ When running through Herdr:
 4. Start all agents first, then submit every prompt without waiting. After all prompts are in flight, wait for and read each result. Do not serialize the review by using a wait flag on the first prompt.
 5. Keep the panes available through aggregation and immediate follow-up work. Close panes this run created once their results are consumed and no reviewer follow-up is pending; keep them only when the user asked to inspect them or the workflow explicitly awaits another reviewer turn.
 
+Include this reporting instruction in **every active sub-agent's prompt**:
+"After your findings, note up to two concrete strengths supported by the diff
+or inspected tests, with a file/symbol reference and why they matter. Do not
+invent praise or treat an absence of findings as proof of correctness. State
+any review limitation; distinguish tests inspected from tests actually run.
+Keep these notes separate from findings and within the stated word budget."
+
 **Standards sub-agent prompt** should include:
 
 - The full diff command and commit list.
@@ -108,9 +115,48 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 ### 5. Aggregate
 
-Present the reports under `## Standards`, `## Spec`, and `## Correctness` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings, because the axes are deliberately separate (see _Why separate axes_).
+Present the detailed findings under `## Standards`, `## Spec`, and
+`## Correctness` headings, verbatim or lightly cleaned. Keep strengths and review
+limitations distinct from findings. Do **not** merge or rerank the detailed
+findings, because the axes are deliberately separate (see _Why separate axes_).
 
-End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes: that's the reranking the separation exists to prevent.
+End with a short, reader-facing summary in this order:
+
+1. **What this PR does** — 1–5 short lines in plain language explaining the
+   purpose and actual behavior changed: what becomes possible or different,
+   and for whom. Ground this in the diff and spec, not just the PR title or
+   author claims. Distinguish intended behavior from incomplete implementation.
+   For a non-PR review, use **What this change does** instead.
+2. **What went well** — 1–3 concise bullets about concrete strengths of the
+   implementation, such as clear boundaries, preserved behavior, or meaningful
+   test coverage. Explain why they help. Use only evidence from the review;
+   omit this section if no meaningful strength was established.
+3. **What needs attention** — 1–3 concise bullets explaining the main problems
+   and their practical consequences, grouping related findings into themes
+   rather than repeating the finding list. Preserve distinctions between
+   standards, spec gaps, and correctness where relevant; do not compute a
+   cross-axis score or let strengths cancel out bugs. Include important review
+   limitations here (for example, a missing spec or tests not run).
+
+This summary is an explanation of the change and its quality, **not a violation
+scoreboard**. Do not use per-axis counts, severity tallies, or “worst issue per
+axis” as the summary. Priorities and source locations belong in the detailed
+findings. If no actionable issues were found, say so with the review's scope
+and limitations; do not imply the change is proven correct. Do not force an
+equal number of positives and negatives.
+
+Illustrative summary (use only facts established for the actual review):
+
+> **What this PR does**
+> Moves document generation into a background job so users can leave the page
+> while work continues, and ties billing to the job's outcome.
+>
+> **What went well**
+> - The job boundary keeps request handling small, and retry tests cover duplicate delivery.
+>
+> **What needs attention**
+> - The default generation path can fail before producing a document, blocking the main user flow.
+> - Abandoned jobs can still be billed, which does not match the cancellation requirements.
 
 ### 6. PR comments (optional)
 
@@ -144,10 +190,18 @@ Otherwise skip this step silently.
    - Read the actual file at each target line and confirm the code there
      matches the finding; if it's blank or unrelated, adjust to the correct
      nearby line within the same hunk. Note every adjustment in the draft.
-5. Draft one summary comment with per-axis counts and the worst issue per axis
-   (never a single cross-axis verdict). May include an observations (unsourced or judgement-call) line for
-   findings downgraded in step 2, max 2, one sentence each.
-6. Show all drafts to the user and post to the PR.
+5. Draft one summary comment using the narrative format from §5 (Aggregate):
+   **What this PR does**, **What went well**, and **What needs attention**.
+   Reflect the verified review outcome, not just the subset selected for new
+   inline comments; already-raised issues may still matter to the overall
+   explanation. Do not turn it back into per-axis counts or severity tallies.
+   May include up to two one-sentence observations for findings downgraded in
+   step 2; label them as observations or judgement calls, not confirmed defects.
+6. Show the narrative summary first, followed by the inline-comment drafts,
+   before posting to the PR. The final pre-post summary must explain the PR and
+   what went well or needs attention; do not append a count-based recap that
+   replaces it. If draft validation changed or dropped a finding, update the
+   summary to match the verified evidence before showing it.
 
 ### 7. Clean up reviewers
 
@@ -165,4 +219,7 @@ A change can pass one axis and fail another:
 - Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
 - Code that matches the spec and every convention but drops an edge case or silently changes a caller's behavior → **Spec and Standards pass, Correctness fail.**
 
-Reporting them separately stops one axis from masking another.
+Reporting detailed findings separately stops one axis from masking another.
+The narrative summary may synthesize related themes for readability; it must
+not collapse the axes into one score, hide a failed axis, or replace the
+underlying findings.
