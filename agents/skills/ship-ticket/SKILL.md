@@ -5,7 +5,7 @@ description: >-
   drdreo/* branch in an isolated worktree, implement and validate the change,
   open one GitHub PR or an ordered GitHub PR stack, and optionally babysit CI
   and review feedback until merge-ready. Use for "implement this ticket",
-  "take this ticket home", "ship SCA-123", or "do this and open a PR".
+  "take this ticket home", "ship this ticket", or "do this and open a PR".
 compatibility: Requires git and gh. Linear tickets require the linear CLI; stack mode requires the github/gh-stack extension; babysitting requires Pi's scheduled Agent tool.
 metadata:
   owner: drdreo
@@ -43,12 +43,9 @@ authorize merging.
    `gh api user --jq '.login | ascii_downcase'`. Stop on any other login.
 3. Resolve the repository root, `origin`, and default branch. Read root guidance
    plus the nearest guidance for every directory likely to change.
-4. Fetch the ticket and its comments. For Lovable Linear tickets use
-   `linear issue view <KEY> --workspace lovable --json --no-pager`; follow linked
-   specs and PRs. Resolve `linear.app/lovable/review/...` URLs by searching the
-   review slug with `linear issue query`; if no issue matches, resolve the
-   corresponding GitHub PR and use its body as the fallback spec. For a GitHub
-   issue use `gh issue view` with comments.
+4. Fetch the ticket and its comments using the repository's issue-tracker
+   guidance. Follow linked specs and PRs. For a GitHub issue use
+   `gh issue view` with comments.
 5. Extract acceptance criteria, non-goals, rollout constraints, and manual
    verification. Keep the ticket as the Spec source for review.
 6. Search open and closed PRs, local branches, remote branches, and worktrees for
@@ -74,16 +71,13 @@ Choose the branch name in this order:
 2. Otherwise `drdreo/<ticket-lower>-<short-kebab-slug>`.
 
 Keep the suffix lowercase, concise, and free of additional `/`. If the repo has
-an executable branch-name checker, run it. In Lovable this is
-`scripts/branch-name-check.sh`.
+an executable branch-name checker, run it.
 
 Resume an existing matching worktree after verifying its branch and ticket. For
 a new branch, create the sibling worktree from `origin/<trunk>`. Never delete,
 reset, overwrite, or reuse an unrelated worktree to resolve a collision.
 
-Follow the repository's fresh-worktree setup. In Lovable, read
-`AGENTS-REFERENCE.md` § Worktree recipes before validation and prefix devenv
-commands with `direnv exec .`.
+Follow the repository's fresh-worktree setup before validation.
 
 ## 3. Choose One PR or a Stack
 
@@ -129,16 +123,14 @@ and must not commit or push unless its brief explicitly assigns one stack layer.
 
 Run the repository-prescribed format, lint, typecheck, test, and generation
 commands for changed areas. Preserve full exit codes; do not pipe validation
-through output filters. In Lovable, run commands through `direnv exec .` and
-follow the worktree-safe validation guidance.
+through output filters.
 
 Then:
 
 1. Inspect the complete diff and status for accidental files, generated drift,
    secrets, debug code, stale comments, and unowned added paths.
-2. Run any repository pre-review sweep. In Lovable, use
-   `tools/pr/PRE_REVIEW_SWEEP.md` when present and run the CODEOWNERS coverage
-   check before pushing.
+2. Run any repository pre-review sweep and required ownership checks before
+   pushing.
 3. Run the registered `code-review` skill with the ticket as Spec. Review a
    single PR against `origin/<trunk>`; review each stack layer against its
    immediate parent.
@@ -151,9 +143,8 @@ report the blocker. Do not open an unsolicited fix for trunk.
 
 ## 6. Commit and Submit
 
-Commit cohesive units with the host repository's convention. In Lovable use
-`type(scope): imperative description`, first line at most 80 characters, and
-commit via `direnv exec . git commit ...` so hooks run. Never use `--no-verify`.
+Commit cohesive units with the host repository's convention and run its hooks.
+Never use `--no-verify`.
 
 Fetch trunk again before submission. Rebase safely, rerun validation affected by
 conflict resolution, and never use a destructive reset. Confirm the diff and
@@ -181,9 +172,9 @@ Use a semantic title valid for the repository. The body contains:
 - `## Test plan` only for manual verification actually performed or explicit
   reviewer instructions.
 
-Do not list CI, lint, typecheck, or automated test commands in Lovable PR test
-plans. Keep title and body true to the final diff after every review-driven
-change. Apply special labels or bypasses only when repository guidance permits
+Keep test plans limited to manual verification actually performed or explicit
+reviewer instructions. Keep title and body true to the final diff after every
+review-driven change. Apply special labels or bypasses only when repository guidance permits
 and explain the reason in the PR body.
 
 ## 7. Optional Babysitting
@@ -216,8 +207,8 @@ Each monitor pass must:
 1. Fetch PR state, head SHA, required checks, failed-run logs, reviews, issue
    comments, inline comments, and unresolved review threads. Include the named
    automated reviewers required by repository guidance; ignore approvals and
-   non-actionable status bots. In Lovable, wait for triage-bot reviews and apply
-   the risk-tier approval rules from root `AGENTS.md`.
+   non-actionable status bots. Follow the repository's required automated-review
+   and approval rules.
 2. Deduplicate by check run, comment/thread ID, and head SHA. Never reply twice.
 3. Before editing, fetch `origin`, require the PR head still equals the observed
    SHA, and synchronize the local branch. Use `git pull --ff-only` for a single
@@ -227,9 +218,8 @@ Each monitor pass must:
 4. Distinguish branch failures from flaky infrastructure and failures already on
    trunk. Retry only a clearly flaky run; never patch trunk from this ticket.
 5. For branch-caused failures or valid feedback, edit the owning branch, run
-   focused validation, commit, re-fetch, re-check the remote head, and push. In
-   Lovable, pull again before the next push after a lint failure because
-   `pr-lint-autofix` may have pushed. In stack mode fix the lowest owning layer,
+   focused validation, commit, re-fetch, re-check the remote head, and push.
+   In stack mode fix the lowest owning layer,
    rebase its upstack, and push according to the `gh-stack` skill.
 6. Reply to actionable comments only after the fix is pushed. For questions or
    rejected feedback, reply with concise evidence. Append

@@ -71,7 +71,8 @@ nonstandard installation.
 ### Pi-only alternative
 
 This repository is also a [Pi package](https://pi.dev/docs/packages.html), so Pi
-can load the same extensions and skills directly:
+can load the same extensions and skills directly. The package also bundles
+`pi-web-access`, which provides web search and page fetching:
 
 ```bash
 pi install git:github.com/drdreo/config
@@ -79,7 +80,9 @@ pi install git:github.com/drdreo/config
 
 Use either the Pi package installation **or** `./bin/config apply`, not both, to
 avoid duplicate resource discovery. The config CLI is preferred because
-`.agents/skills` remains available to multiple harnesses.
+`.agents/skills` remains available to multiple harnesses. If you install the
+package, do not separately install `npm:pi-web-access`; it is loaded from the
+bundle.
 
 ## Toolchain inventory
 
@@ -87,12 +90,11 @@ avoid duplicate resource discovery. The config CLI is preferred because
 
 | Tool | Role | Integration here |
 | --- | --- | --- |
-| [Pi](https://pi.dev) | Extensible terminal coding harness | Two personal extensions and all skills |
+| [Pi](https://pi.dev) | Extensible terminal coding harness | Personal extensions, all skills, and bundled web access |
 | [Herdr](https://herdr.dev) | Terminal workspaces, worktrees, and agent orchestration | `herdr` skill; its generated Pi bridge stays tool-managed |
 | [daylog](https://github.com/drdreo/daylog) | Append-only daily trail of substantive human and agent work | `daylog` skill; journal data stays local |
 | [Texlr](https://github.com/drdreo/texlr) | Polished PDF and self-contained LaTeX handoffs | `texlr-handoff` skill |
 | [Notion CLI (`ntn`)](https://ntn.dev) | Notion API, pages, files, and worker operations | `notion-cli` skill |
-| [Playwright CLI](https://github.com/microsoft/playwright-cli) | Browser-driven verification | `qa-check` skill |
 | [GitHub CLI](https://cli.github.com/) | Issues, PRs, and repository automation | Used by review and shipping workflows |
 
 ### Skills
@@ -104,7 +106,6 @@ avoid duplicate resource discovery. The config CLI is preferred because
 | [`daylog`](agents/skills/daylog/) | Record only durable, substantive outcomes |
 | [`herdr`](agents/skills/herdr/) | Inspect and control Herdr sessions safely |
 | [`notion-cli`](agents/skills/notion-cli/) | Drive `ntn` using its live CLI documentation |
-| [`qa-check`](agents/skills/qa-check/) | Time-boxed browser QA with evidence |
 | [`ship-ticket`](agents/skills/ship-ticket/) | Take Linear or GitHub tickets through implementation and PR |
 | [`teach-me-something`](agents/skills/teach-me-something/) | Short, code-grounded lessons from the active repository |
 | [`texlr-handoff`](agents/skills/texlr-handoff/) | Produce designed PDF handoff documents |

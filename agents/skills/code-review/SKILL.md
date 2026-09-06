@@ -21,7 +21,7 @@ The parent agent owns clarification and orchestration. Sub-agents run in isolate
 - When the check fails, use detached Pi subprocesses unless the user explicitly requested Herdr. An explicit Herdr request outside Herdr is blocked; report that Herdr is unavailable and stop.
 - Record every reviewer pane, process, and temporary file created by the run so cleanup cannot affect user-owned resources.
 
-For Lovable reviews, use [`references/lovable-issue-tracker.md`](references/lovable-issue-tracker.md). For other repositories, prefer their project-local issue-tracker guidance and fall back to the PR body.
+Prefer the repository's project-local issue-tracker guidance and fall back to the PR body.
 
 ## Process
 
@@ -37,7 +37,7 @@ Before going further, confirm the fixed point resolves (`git rev-parse <fixed-po
 
 Look for the originating spec, in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the applicable repository guidance. For Lovable, follow `references/lovable-issue-tracker.md`.
+1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the applicable repository guidance.
 2. A path the user passed as an argument.
 3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".

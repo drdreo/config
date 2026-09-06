@@ -3,17 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "description": "drdreo's portable agent harness and workstation configuration",
+  "packageManager": "pnpm@11.22.0",
   "keywords": [
     "pi-package"
   ],
   "pi": {
     "extensions": [
-      "./pi/extensions"
+      "./pi/extensions",
+      "./node_modules/pi-web-access/index.ts"
     ],
     "skills": [
       "./agents/skills"
     ]
   },
+  "dependencies": {
+    "pi-web-access": "^0.28.0"
+  },
+  "bundledDependencies": [
+    "pi-web-access"
+  ],
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
