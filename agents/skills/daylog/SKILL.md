@@ -1,89 +1,35 @@
 ---
 name: daylog
-description: Record substantive completed work with the daylog CLI — a meaningful implementation, diagnosis, decision, or system change. Use at most once per task, and only when the outcome still matters tomorrow. Never for PR or CI status, routine failures or retries, questions answered, files read, trivial edits, or progress updates.
-metadata:
-  source: github.com/drdreo/daylog
+description: Use proactively after implementing, investigating, reviewing, or completing a meaningful work segment, without waiting for a logging request. Before the final response, submit a brief factual handover using daylog add and confirm capture was acknowledged. Athena decides journal relevance.
 ---
 
-# Log substantive work
+# Give Daylog a work handover
 
-This log is read once a day, by one human catching up on what happened.
-Every entry spends their attention, so the test is not "did I finish
-something" but "would its absence lose something worth knowing".
+## When and how to report
 
-## What clears the bar
+Use this skill proactively after implementation, investigation, review, or another meaningful work segment, even when the user did not ask to log. Before the final response for that segment, execute `daylog add` with a brief factual handover; a chat summary is not a submitted report. Report partial results and useful read-only findings too. Do not wait for a commit, PR, deployment, perfect result, or end of session.
 
-Log a task that left something behind:
+Confirm the command succeeded and returned `queued <candidate-id>`. That acknowledges private capture, not journal publication; do not run curation or wait for publication. If the CLI is unavailable or capture fails, briefly tell the user instead of claiming it was logged. Respect explicit no-logging instructions and tool restrictions; never bypass them or impersonate a human. Skip pure conversation and status-only replies with no new work or finding, and do not resubmit an already acknowledged handover unless there is a new delta.
 
-- code, documentation, or product behavior materially changed
-- a bug reproduced, diagnosed, or fixed
-- research, an investigation, or a review that reached a conclusion
-- configuration, infrastructure, schema, or data changed
-- a key milestone that materially changes what the human needs to know
+## What to include
 
-## What does not
+Give a brief handover, not a polished headline or a certification. A few natural sentences are usually enough:
 
-- answering a question, explaining code, comparing options
-- reading, searching, or navigating a codebase
-- a trivial edit: a typo, a rename, a one-line tweak with no consequence
-- progress updates, or a second entry for work already logged
-- pull-request lifecycle or status: opened, pushed, review requested,
-  approved, merged, closed, or conflicted
-- CI and check status: pending, passing, failing, cancelled, retried, or fixed
-- a failed command, test, check, or attempt that produced no durable diagnosis
-  or decision
-- anything whose only artifact is the conversation itself
+- What changed, was attempted, or was learned? Include useful context or a decision's rationale when it helps explain the result.
+- What checks did you actually perform, and what did they show?
+- What remains uncertain, untested, or unfinished?
 
-When it is borderline, do not log. A missing entry costs nothing; a log
-full of noise stops being read.
-
-The GitHub poller owns PR lifecycle, review state, links, and check results.
-Do not duplicate those in an agent entry. A failure or blocker is not itself
-an outcome; log only a durable diagnosis or decision produced by investigating
-it, and name that result rather than the failed PR, check, or command.
-
-## How to log
-
-Run this from the repository or working directory where the work happened:
+Mention these when relevant; there is no mandatory form or requirement to run extra checks just to log. Do not paste transcripts or raw tool output. Distinguish what you observed from what you inferred, and proposed, attempted, implemented, tested, and deployed work from each other.
 
 ```sh
-daylog add --type <work|sidequest> "one-line TLDR, ≤280 chars"
+daylog add --type work --ref '#142' "Implemented name-based campaign collections so renames no longer break membership. Added rename/deletion recovery tests; those pass locally. Haven't exercised the UI yet. Older briefs remain discoverable through the fallback."
 ```
 
-Use `work` for the task the user asked for, `sidequest` for concrete work
-outside that request; when unsure, use `sidequest`.
-
-Add `--ref '#142'` or a Linear/Jira ID for each related PR or issue,
-repeating `--ref` as needed. State the outcome, not the reasoning: what is
-true now that was not true before. A reference can connect the underlying
-work to a PR, but does not make the PR's status loggable.
-
-## Filing a todo
-
-If you find an actionable task you are not doing, and it clears the same
-bar, file it for the human to review:
-
-```sh
-daylog add --type todo "concrete action, for human review"
-```
-
-File todos only for the human. Do not act on, track, or close a todo you
-filed unless the user explicitly asks. The triage verbs (`accept`,
-`decline`) are the human's alone — the CLI rejects them from an `agent:`
-source.
-
-## Rules
-
-- One entry per completed task. Do not split one outcome across entries.
-- Before logging, verify `DAYLOG_SOURCE` starts with `agent:`. If it does
-  not, report the missing harness configuration and skip the entry rather
-  than guessing an identity.
-- Never write directly to daylog's data files, and never pass `--source`:
-  producer identity belongs in the agent harness.
-- The store override is `$DAYLOG_DIR` — there is no `DAYLOG_DATA`. When
-  testing against a scratch store, set it in the same command as the write:
-  shell state does not persist between tool calls, and a lost export sends
-  test events into the real log.
-- If `daylog` is unavailable or rejects the entry, report that briefly
-  instead of writing elsewhere. You may shorten an overlong TLDR and retry
-  once.
+- Report concrete observations, findings, decisions, changes, and useful references. Partial results can be useful; describe their limitations rather than treating the task as either completely done or not worth reporting.
+- Use `work` for the requested task, `sidequest` for incidental work, or `note` for a factual observation. All agent narrative types enter the same private queue.
+- Do not decide journal relevance or final wording. Daylog can rewrite, combine, update, skip, or hold reports. Unnecessary reports are acceptable; do not narrate every tool call.
+- Reports can be up to 16 KiB; the journal's short-headline limit does not apply to your handover. Keep useful context instead of compressing away limitations. No proof attachments or independent audit are required; never invent checks or claim verification you did not perform.
+- Add refs for relevant issues/artifacts. PR/CI status has a separate poller snapshot; describe underlying work rather than using PR movement as a work outcome.
+- `queued <candidate-id>` means durably captured, NOT published. A failed command means the report was not acknowledged. If you have a stable request identity, supply `--idempotency-key`; reuse it only for identical content.
+- Explicit `todo` is a proposal for the human, not a narrative report or your own task tracker. File one only when deliberately proposing an action. Never adopt, decline, or complete obligations for the human.
+- Source identity comes from the harness's `DAYLOG_SOURCE=agent:<name>` environment. Never override it to `human:*`, inspect worker mode to change routing, or write directly to daylog data files.

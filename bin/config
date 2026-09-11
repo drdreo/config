@@ -11,10 +11,12 @@ CONFIG_BACKUP_DIR=${CONFIG_BACKUP_DIR:-"$HOME/.config-backups/drdreo-config"}
 SOURCE_ROOTS=(
   "$ROOT/agents/skills"
   "$ROOT/pi/extensions"
+  "$ROOT/pi/context"
 )
 TARGET_ROOTS=(
   "$AGENTS_HOME/skills"
   "$PI_CODING_AGENT_DIR/extensions"
+  "$PI_CODING_AGENT_DIR"
 )
 
 usage() {
