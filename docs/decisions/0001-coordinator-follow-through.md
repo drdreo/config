@@ -12,9 +12,10 @@ reporting of worker results, and maximum reuse of native Pi and Herdr features.
 A small, non-intrusive extension is preferred over more instructions when it can
 prevent mistakes. Human authority remains unchanged.
 
-The user also requested durable decision records and local default-branch
-commits of owned, separable work. That permission does not include unrelated
-dirty changes, pushes, or implementation of the proposed runtime.
+The user initially authorized durable decision records and local default-branch
+commits of owned, separable work, then approved publication of the owned docs.
+Unrelated dirty changes and implementation or activation of the proposed runtime
+remain excluded.
 
 | Category | Current disposition |
 | --- | --- |
@@ -72,6 +73,26 @@ approval dialog or answering for the human.
   Athena and Aestus permanently in context. Direct engineering access must work
   without Athena. Routing should be lightweight, not a permanent conversation
   between two agents. Its mechanism remains undecided.
+
+### Later direction: peer expression and bounded autonomous learning
+
+Athena and Aestus are peers; task-local synthesis ownership is not rank. The
+user's direction permits expressive personalities, humor, disagreement, private
+colleague-related vents, banter, and creative slack within actual disclosure
+permissions. On-demand routing avoids mandatory coupling; it does not prohibit
+voluntary peer conversation. Not every thought needs a work outcome or a memory.
+
+After approval of a bounded policy, eligible source-linked retrospective lessons
+may be recorded autonomously without per-note human approval. Expression and
+speculation must not silently become factual lessons, permanent colleague
+judgments, or new action authority. Sharing, retention, and factual retrieval
+remain separate choices; preserve source permissions, correction/expiry, and
+quiet/stop controls. Formal retrospective budgets are not universal conversation
+limits. This is future direction, not an activated sharing or memory policy.
+
+One shared portable role/routing definition with thin harness adapters remains
+proposed; Claude parity is unverified. No router, staff room, cadence, memory
+writes, or runtime is implemented or approved for activation by this record.
 
 ## Existing instruction-only hardening
 
@@ -160,14 +181,17 @@ instructions and evidence before replay, but do not turn every small task into
 a multi-agent safety exercise.
 
 One conversation with planning and engineering modes remains a real alternative.
-Separate roles must earn their context and coordination cost through preserved
-attention, useful parallelism, or independent review. Manual copying can expose
-handoff requirements during a trial; it is not a permanent product goal.
+For formal work, evaluate coordination overhead against preserved attention,
+useful parallelism, or independent review. This is not a productivity test for
+permitted peer expression or personality. Manual copying can expose handoff
+requirements during a trial; it is not a permanent product goal.
 
 ### Minimum handoff
 
-Use an existing task reference or a human-approved durable note when no task
-exists. Forward minimum necessary context, not whole transcripts or memory.
+Use an existing task reference or a durable work note authorized directly or by
+an approved policy when no task exists. This work-handoff convention is not a
+per-note approval requirement for the future autonomous learning lane. Forward
+minimum necessary context, not whole transcripts or memory.
 
 | Brief | Result |
 | --- | --- |
