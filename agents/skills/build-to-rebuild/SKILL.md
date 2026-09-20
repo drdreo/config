@@ -1,12 +1,11 @@
 ---
 name: build-to-rebuild
-description: Build a disposable first implementation and draft PR, have a read-only gpt-5.6-sol xhigh agent judge its architecture and produce a handover, then give that handover to a fresh agent that reimplements the solution from the original base in a new worktree. Use for "build to rebuild", "implement then rethink", "architecture spike then clean rewrite", or when the first implementation should reveal the right design rather than become the final substrate.
-compatibility: Requires git, gh, pi with openai-codex/gpt-5.6-sol, and the global ship-ticket skill. herdr (optional) provides the live orchestration UI and the probe information barrier.
+description: Build a disposable first implementation and draft PR, have a read-only gpt-6-astra high agent judge its architecture and produce a handover, then give that handover to a fresh agent that reimplements the solution from the original base in a new worktree. Use for "build to rebuild", "implement then rethink", "architecture spike then clean rewrite", or when the first implementation should reveal the right design rather than become the final substrate.
+compatibility: Requires an active Herdr session (HERDR_ENV=1), git, gh, Pi with openai-codex/gpt-6-astra, and the global herdr and ship-ticket skills.
 metadata:
   owner: drdreo
-  maturity: poc
 tier: safety-critical
-allowed-tools: Skill, Read, Write, Edit, Bash(mkdir:*), Bash(test:*), Bash(herdr:*), Bash(git:*), Bash(gh:*), Bash(~/.agents/skills/build-to-rebuild/scripts/run-agent.sh:*)
+allowed-tools: Skill Read Write Edit Bash(mkdir:*) Bash(test:*) Bash(herdr:*) Bash(git:*) Bash(gh:*)
 ---
 
 # Build to Rebuild
@@ -21,10 +20,13 @@ Require one ticket or an equally concrete spec. Confirm before starting that the
 
 ## Orchestration surface
 
-Check `test "${HERDR_ENV:-}" = 1` once at the start.
+Require `test "${HERDR_ENV:-}" = 1` before starting or resuming. If it fails, ask the user to reopen this task inside Herdr and stop. Load the global `herdr` skill and print `herdr --skill`; discover current syntax through its command groups.
 
-- **Inside herdr**: use herdr as the run UI. Print `herdr --skill` and follow it for syntax. Give each phase its own sibling pane with `--no-focus` so the user can watch without losing their place. Run the probe as a separate herdr agent (§1). Run the judge and rebuild scripts with `pane run`, then `pane wait-output --regex "BUILD-TO-REBUILD (DONE|FAILED)"` — the script prints exactly one of those sentinels.
-- **Outside herdr**: run both script invocations in the background and poll. A foreground shell call is killed at the harness timeout long before an xhigh run finishes; treat a run that ends without a sentinel as failed.
+Herdr owns every child agent: probe, architect, and rebuild. Start interactive Pi through `herdr agent start`, never through `pane run`, a shell wrapper, a background process, or an external terminal. Do not use `--print`, `--no-session`, or inherit/fork the orchestrator's session.
+
+Use a separate pane for each phase, with a concise unique role-plus-ticket agent name such as `architect-dx123`. Keep focus with the user (`--no-focus`). Prefer a sibling pane when it remains readable; worktree workspaces provide room for the review and rebuild. Record the returned IDs, not guessed sidebar positions. Keep completed agents visible until the user chooses to close them.
+
+Before starting an agent, ensure its pane is at an available shell prompt in the intended worktree. Follow the repository's worktree setup; if direnv or Pi project trust requires approval, relay it to the user rather than bypassing it or starting without the required environment.
 
 ## Artifacts
 
@@ -32,21 +34,21 @@ Store orchestration files outside the repository under:
 
 `~/.agents/runs/build-to-rebuild/<ticket-or-slug>-<utc-timestamp>/`
 
-Use `.scratch.md` for every Markdown artifact. Record the repository path, ticket/spec, initial PR, original base SHA, probe SHA, worktrees, orchestration surface, and final PR in `run-state.scratch.md` after each phase. If a run directory for the same ticket already exists, offer to resume from the last recorded phase instead of starting over.
+Use `.scratch.md` for every Markdown artifact. Record the repository path, ticket/spec, original base SHA, probe SHA and PR, worktrees, final PR, and accepted handover in `run-state.scratch.md`. For each phase, record its status, Herdr workspace/pane IDs, agent name, and Pi session path when available. Checkpoint immediately after creation or an external action and after each phase's validation.
 
-### Progress contract
+If a run for the same ticket exists, offer to resume. Inspect its recorded agent, cwd, session identity, git state, and PR before sending input or starting a replacement. A timeout or lost pane is not permission to duplicate a running agent, create another PR, or discard completed work. Resume legacy artifacts without restarting their old shell runner.
 
-Long-running judge and rebuild agents must emit occasional standalone progress lines in this exact form:
+### Observe and collect
 
-`BUILD-TO-REBUILD UPDATE <phase>: <completed milestone>; next: <next step>`
+Send the role brief with `herdr agent prompt <agent> <text> --wait --timeout 120000`. Give long briefs as an instruction to read their absolute file path. Use bounded `herdr agent wait` calls for subsequent waits; a wait timeout leaves the agent running. Follow progress with `herdr agent read <agent> --source recent-unwrapped --lines 120`. Ordinary Pi tool output is the live view; no custom progress-line protocol or log filtering.
 
-Emit the first update after initial orientation, then only at meaningful milestones or after roughly five minutes without visible output. Keep each update to one short line, never narrate routine tool calls, and never include secrets. `run-agent.sh` mirrors these lines live to its supervisor and stores them in `<output>.updates.log`; it strips them from the final deliverable so the output file remains clean and atomic. The updates log may remain after failure for diagnosis. Inside herdr, inspect the pane output; outside herdr, tail the updates log while polling for the terminal sentinel.
+On `blocked`, inspect the UI and relay the question to the user; never answer approval dialogs yourself. On `unknown`, a stalled prompt, or a wait error, inspect `agent get` and `agent read` before sending more input. Do not resend a brief until you know whether it was received.
+
+`idle` or `done` means the agent is available, not that the task succeeded. Read the response and validate the phase's deliverable before advancing. The orchestrator saves the complete architect response to `architecture-handover.scratch.md` and the rebuild response to `rebuild-result.scratch.md`; these are not log captures. If terminal scrollback is incomplete, read the agent's saved Pi session. If that is unavailable, ask for the missing sections in smaller responses. Never persist a clipped read or a `BLOCKED` response as a completed handover.
 
 ## 1. Build the probe
 
-Inside herdr: start a fresh agent (`herdr agent start probe --kind pi` in a sibling pane) and prompt it with `/skill:ship-ticket <ticket> --single --draft`. The probe agent never loads this skill, so the information barrier is real — it invests as if its PR were final. Wait on its lifecycle; relay a `blocked` state to the user instead of answering approval dialogs yourself.
-
-Outside herdr: load and execute the global `ship-ticket` skill inline with `--single --draft` and without `--babysit`. There is no information barrier in this mode — the probe is built by the same context that knows about the rewrite. Note that in `run-state.scratch.md` so the comparison is honest.
+Start a fresh Pi agent in a sibling pane and prompt it with `/skill:ship-ticket <ticket> --single --draft`, without `--babysit`. Give it only the ticket/spec and implementation constraints, not this skill, the review plan, or the run-state file. The probe invests as if its PR were final. Its brief must require Herdr for any further delegation and keep its working pane in the worktree it creates. Follow the global Herdr skill to open that worktree visibly if needed.
 
 The probe PR stays a draft for its entire life. Draft status is the only disposability marker — no do-not-merge labels, title prefixes, or comments. Never mark it ready for review except through the endorsement path in §3.
 
@@ -56,16 +58,16 @@ Stop if the probe PR is not open or its checks reveal that the implementation ne
 
 Capture these values from the probe PR and git:
 
-| Value | Meaning |
-| --- | --- |
-| `BASE_SHA` | Merge-base of the probe head and its target branch |
-| `PROBE_SHA` | Exact probe head reviewed by the architecture agent |
-| `PROBE_PR` | Draft PR URL and number |
-| `SPEC` | Ticket plus linked acceptance criteria and constraints |
+| Value       | Meaning                                                |
+| ----------- | ------------------------------------------------------ |
+| `BASE_SHA`  | Merge-base of the probe head and its target branch     |
+| `PROBE_SHA` | Exact probe head reviewed by the architecture agent    |
+| `PROBE_PR`  | Draft PR URL and number                                |
+| `SPEC`      | Ticket plus linked acceptance criteria and constraints |
 
 Re-read the head immediately before §4 with `gh pr view <PROBE_PR> --json headRefOid --jq .headRefOid`; if it no longer equals `PROBE_SHA`, rerun the architecture review.
 
-Create a detached sibling review worktree at `PROBE_SHA` (inside herdr, `herdr worktree create` also gives it a visible workspace). The judge is read-only by instruction and tool list but keeps bash for git archaeology; the detached worktree is the containment, not a guarantee. Record its path and remove it only after the handover is accepted.
+Create a detached sibling review worktree with `git worktree add --detach <review-worktree> <PROBE_SHA>`, then expose it with `herdr worktree open --cwd <repo> --path <review-worktree> --label <review-label> --no-focus`. Do not invent a detach flag for Herdr. The judge is read-only by instruction and tool list but keeps bash for git archaeology; this is not a security sandbox. Record its path and retain it through handover acceptance.
 
 ## 3. Run the architecture judge
 
@@ -83,14 +85,16 @@ Write `architecture-review-prompt.scratch.md` in the run directory. Include the 
 
 Require these headings: `System map`, `Probe approach`, `Strengths`, `Weaknesses`, `Alternatives`, `Recommended architecture`, `Clean rebuild plan`, `Acceptance and validation`, `Risks and open questions`.
 
-Run the pinned read-only model (via `pane run` inside herdr, in the background otherwise):
+Start the architect in the review workspace's available shell pane:
 
 ```bash
-~/.agents/skills/build-to-rebuild/scripts/run-agent.sh review \
-  --cwd <detached-review-worktree> \
-  --prompt <run-dir>/architecture-review-prompt.scratch.md \
-  --output <run-dir>/architecture-handover.scratch.md
+herdr agent start <architect-name> --kind pi --pane <review-pane-id> -- \
+  --model openai-codex/gpt-6-astra --thinking high \
+  --tools read,grep,find,ls,bash,symbol_search,project_report,module_report,read_symbol,read_enclosing,lsp_diagnostics,lens_diagnostics \
+  --append-system-prompt "You are a read-only architecture reviewer. Never mutate files, git state, GitHub state, or external systems. Do not delegate. Return your complete review in the conversation; the orchestrator saves it. Stop and report missing input when blocked."
 ```
+
+Wait for startup readiness, then prompt it to read `architecture-review-prompt.scratch.md` by absolute path. Collect and save its complete response using § Observe and collect. Do not grant write tools just to save the handover.
 
 Reject the handover if it merely restates the diff, lacks alternatives, or does not give the fresh agent enough decisions to implement without seeing the probe code. A reasoned endorsement of the probe's shape is a valid verdict, not a failure.
 
@@ -102,39 +106,42 @@ Reject the handover if it merely restates the diff, lacks alternatives, or does 
 
 ## 4. Create a clean room
 
-Create a new sibling worktree outside the repository from `BASE_SHA`, never from `PROBE_SHA` or the probe branch (inside herdr: `herdr worktree create --base <BASE_SHA> --branch <user>/<ticket>-rebuild`). The branch must follow repository naming rules.
+Create a new sibling worktree outside the repository from `BASE_SHA`, never from `PROBE_SHA` or the probe branch. Use `herdr worktree create --cwd <repo> --base <BASE_SHA> --branch <user>/<ticket>-rebuild --path <clean-worktree> --label <rebuild-label> --no-focus`. The branch must follow repository naming rules.
 
 Do not merge, rebase, cherry-pick, copy files, or apply patches from the probe. Do not close or modify the probe PR; it remains evidence until the new PR is reviewed.
 
 ## 5. Run the rebuild agent
 
+Prepare `rebuild-handover.scratch.md` from the accepted architecture review: retain the architecture decisions, rationale, abstract strengths, implementation plan, validation, and unresolved constraints. Remove probe identifiers, code excerpts, diffs, and citations to probe-only symbols; retain useful references to code that exists at `BASE_SHA`. Do not silently change the accepted design.
+
 Write `rebuild-prompt.scratch.md` with:
 
-- the absolute clean worktree path and branch;
+- the absolute clean worktree path, branch, and `BASE_SHA`;
 - the original spec and acceptance criteria;
-- the absolute `architecture-handover.scratch.md` path;
+- the absolute `rebuild-handover.scratch.md` path;
 - repository-specific validation and PR rules already discovered.
 
-Never give the rebuild agent the probe PR number, branch, or worktree path — with `gh` available, an identifier is one `gh pr diff` away from breaking the clean room.
+Never give the rebuild agent the probe PR number, branch, worktree path, full review, or run-state file — with `gh` available, an identifier is one `gh pr diff` away from breaking the clean room. Check linked spec material for probe references before passing it through; provide the acceptance text instead when necessary.
 
 The brief must say:
 
-- Read the handover, spec, and code at `BASE_SHA` before planning.
-- This is a detached, non-interactive run. Return `BLOCKED: <reason>` instead of asking a question when required input is missing.
+- Read the supplied handover, spec, and code at `BASE_SHA` before planning; do not inspect other implementations, sibling worktrees, or other run artifacts.
+- Stop and ask when required input is missing; the orchestrator relays the question to the user.
+- Use Herdr for any further delegation, passing only these same permitted inputs.
 - Implement the recommended architecture from scratch; preserve strengths only as abstract properties described in the handover.
 - Record any deviation from the handover and its evidence.
 - Run repository-required tests, formatters, diagnostics, and review.
 - Rebase safely onto the latest target branch before submission and rerun affected validation.
 - Open a new PR without referencing any prior work; provenance is added afterward.
 
-Run the fresh implementation agent (via `pane run` inside herdr, in the background otherwise):
+Start a fresh interactive agent in the clean workspace's available shell pane:
 
 ```bash
-~/.agents/skills/build-to-rebuild/scripts/run-agent.sh rebuild \
-  --cwd <clean-worktree> \
-  --prompt <run-dir>/rebuild-prompt.scratch.md \
-  --output <run-dir>/rebuild-result.scratch.md
+herdr agent start <rebuild-name> --kind pi --pane <rebuild-pane-id> -- \
+  --model openai-codex/gpt-6-astra --thinking medium
 ```
+
+Prompt it to read `rebuild-prompt.scratch.md` by absolute path, then observe and collect its result. Require a new PR URL, validation evidence, deviations, and unresolved decisions before treating the phase as complete. Verify the PR and worktree directly, not only the agent's completion claim.
 
 After the rebuild PR opens, the orchestrator runs `gh pr edit` on it to add: the probe PR as architectural prior art, a statement that no probe commits were reused, deviations recorded in `rebuild-result.scratch.md`, and that it supersedes the draft probe. Do not close either PR.
 
@@ -165,13 +172,16 @@ Report both PR URLs, which one is the disposable probe, the handover path, the c
 
 ## Failure rules
 
-| Failure | Action |
-| --- | --- |
-| Probe does not reach the hard architectural path | Fix the probe before review |
-| Probe agent blocked on an approval or question (herdr) | Relay to the user; never answer it yourself |
-| Judge output is shallow or restates the diff | Tighten the prompt and rerun the judge |
-| Judge endorses the probe architecture | Handover gate: offer to promote the probe, skip the rebuild |
-| Recommended architecture needs a product decision | Stop before creating the rebuild worktree |
-| Rebuild agent reads or incorporates probe code | Discard the rebuild branch and restart from `BASE_SHA` |
-| Original base no longer rebases safely | Report the conflict; do not fall back to building on the probe |
-| Script run ends without a `BUILD-TO-REBUILD` sentinel | Treat the output file as absent and rerun the phase |
+| Failure                                                     | Action                                                                                          |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Probe does not reach the hard architectural path            | Fix the probe before review                                                                     |
+| Herdr unavailable                                           | Stop; ask the user to resume inside Herdr                                                       |
+| Any agent blocked on an approval or question                | Relay to the user; never answer it yourself                                                     |
+| Judge output is shallow or restates the diff                | Tighten the prompt and rerun the judge                                                          |
+| Judge endorses the probe architecture                       | Handover gate: offer to promote the probe, skip the rebuild                                     |
+| Recommended architecture needs a product decision           | Stop before creating the rebuild worktree                                                       |
+| Rebuild agent reads or incorporates probe code              | Discard the rebuild branch and restart from `BASE_SHA`                                          |
+| Original base no longer rebases safely                      | Report the conflict; do not fall back to building on the probe                                  |
+| Wait times out or lifecycle is unknown                      | Inspect the existing agent; do not launch a replacement                                         |
+| Agent exits or its pane disappears                          | Inspect saved session, artifacts, git and PR state; resume only after ruling out duplicate work |
+| Agent is idle/done but deliverable is missing or incomplete | Continue that phase; do not advance on lifecycle state alone                                    |

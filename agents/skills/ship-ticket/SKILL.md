@@ -6,7 +6,7 @@ description: >-
   open one GitHub PR or an ordered GitHub PR stack, and optionally babysit CI
   and review feedback until merge-ready. Use for "implement this ticket",
   "take this ticket home", "ship this ticket", or "do this and open a PR".
-compatibility: Requires git and gh. Linear tickets require the linear CLI; stack mode requires the github/gh-stack extension; babysitting requires Pi's scheduled Agent tool.
+compatibility: Requires git, gh, and the global pr-description skill. Linear tickets require the linear CLI; stack mode requires the github/gh-stack extension; babysitting requires Pi's scheduled Agent tool.
 metadata:
   owner: drdreo
 tier: safety-critical
@@ -15,8 +15,7 @@ tier: safety-critical
 # Ship Ticket
 
 Own one ticket through a reviewable, merge-ready change. Do not merge, enable
-auto-merge, bypass a gate, or write to the issue tracker unless the user
-explicitly asks.
+auto-merge, bypass a gate, unless the user explicitly asks.
 
 ## Usage
 
@@ -165,17 +164,15 @@ base pointed at the branch directly below it.
 
 ### PR metadata
 
-Use a semantic title valid for the repository. The body contains:
-
-- `## Summary`: what changed and why, including the ticket key.
-- Stack position and dependency when stacked.
-- `## Test plan` only for manual verification actually performed or explicit
-  reviewer instructions.
-
-Keep test plans limited to manual verification actually performed or explicit
-reviewer instructions. Keep title and body true to the final diff after every
-review-driven change. Apply special labels or bypasses only when repository guidance permits
-and explain the reason in the PR body.
+Load `~/.agents/skills/pr-description/SKILL.md` before writing titles or bodies.
+This separately installed skill is required; if it is unavailable, stop and
+report the missing prerequisite rather than inventing a PR format. Follow the
+repository's PR contract, use STE-inspired plain English, and end with verified
+Linear references when applicable. Include stack position and dependency when
+stacked; use `Part of` until a PR's merge completes the ticket. Keep title and
+body true to the final diff after every review-driven change. Apply special
+labels or bypasses only when repository guidance permits and explain the reason
+in the PR body.
 
 ## 7. Optional Babysitting
 
@@ -222,8 +219,7 @@ Each monitor pass must:
    In stack mode fix the lowest owning layer,
    rebase its upstack, and push according to the `gh-stack` skill.
 6. Reply to actionable comments only after the fix is pushed. For questions or
-   rejected feedback, reply with concise evidence. Append
-   `🤖 Automated by ship-ticket` to every automated GitHub reply.
+   rejected feedback, reply with concise evidence.
 7. Resolve a thread only after its concern is fixed or answered. Never dismiss a
    High/P1 finding without explicit human approval.
 8. Refresh stale PR titles/bodies after implementation changes.
