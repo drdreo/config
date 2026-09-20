@@ -1,7 +1,49 @@
 ---
 name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). Runs the reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents and reports them side by side. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
 ---
+
+## Mode selection
+
+If the user passes `quick`, `simple`, or `--quick` as a mode argument, or explicitly
+asks for a quick/simple review, follow only **Quick review** below, then stop.
+Remove the mode argument before interpreting the remaining target/instructions.
+Otherwise follow **Full review** unchanged.
+
+Examples: `/code-review quick main`, `/code-review simple <PR-URL>`, or
+`/skill:code-review quick main`. Without a mode, `/code-review main` uses the
+full review. `quick` and `simple` are aliases for the same lightweight mode.
+
+## Quick review
+
+A lightweight, read-only review in the current agent session. No sub-agents,
+Herdr orchestration, spec discovery, standards/smell audit, or mandatory
+three-pass exploration. Do not run the full-review process or post PR comments.
+
+1. **Choose scope.** Honor an explicit ref, PR, or working-tree scope. For a ref,
+   verify it resolves and use `git diff <ref>...HEAD`. For a PR, use its actual
+   base/head diff, not an unrelated local checkout. Without a target, inspect
+   `git status --short`: review staged and unstaged changes against `HEAD` plus
+   relevant untracked source files (do not read likely secrets or generated
+   artifacts). With a clean tree, use the merge-base with the local ref for the
+   repository's configured default branch; ask only if that cannot be determined
+   unambiguously. State the scope; stop if there is no diff. Do not change branches
+   or modify the working tree to obtain the diff.
+2. **Inspect once.** Read the diff and enough surrounding code, direct callers,
+   and relevant tests to check likely bugs, regressions, error handling, and
+   security issues. Follow repository instructions, but skip style/naming nits,
+   speculative refactors, and external issue/spec lookup unless the user supplies
+   that context. Prioritize risky changes; disclose anything left unreviewed
+   rather than silently escalating to the full workflow.
+3. **Report briefly.** Give a sentence describing the change, then one list of
+   actionable findings ordered by severity. Each finding needs `file:line`, a
+   concrete failure scenario/impact, and a fix direction when known. No three-axis
+   headings, quotas, or forced praise. If none, say "No actionable issues found
+   in this quick pass." End with scope limitations and tests run versus merely
+   inspected. Do not claim tests ran unless they did; run only focused, inexpensive
+   checks when useful, never a full suite by default.
+
+## Full review
 
 Three-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
@@ -70,8 +112,8 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 When running through Herdr:
 
-1. For a PR review, rename the current Herdr workspace/window after the PR before creating panes. Prefer `pr-<number>`; if no number resolves, use a very short kebab-case summary. If the installed CLI cannot rename the workspace/window, rename the current tab instead. Target `$HERDR_WORKSPACE_ID` or `$HERDR_TAB_ID` explicitly and do not change focus.
-2. Create one sibling pane per active axis in the current tab, with the review working directory as its `cwd` and without changing focus.
+1. Before creating panes, inspect the current labels with `herdr pane current --current` and the workspace/tab commands. Preserve user-chosen names; replace default or agent-generated labels. For a PR review, use `pr-<number>` for the workspace and name the tab with the intent, such as `Review login timeout fix`, rather than leaving it as `1`. Summarize the PR title and available context yourself in 3–7 plain-language words; do not start a separate model or agent for naming. For a non-PR review, summarize the requested change. If only the PR number is known, use `Review PR #<number>` temporarily, then update it after reading the PR. Use explicit IDs from the responses and do not change focus.
+2. Create one sibling pane per active axis in the current tab, with the review working directory as its `cwd` and without changing focus. Label each new pane by its axis (`Standards`, `Spec`, or `Correctness`) using `herdr pane rename`; an agent name alone does not label the pane.
 3. Start a Pi agent in each pane, using concise role names such as `standards-review`, `spec-review`, and `correctness-review`. Preserve the parent review's provider, model, thinking level, approval mode, and isolation flags.
 4. Start all agents first, then submit every prompt without waiting. After all prompts are in flight, wait for and read each result. Do not serialize the review by using a wait flag on the first prompt.
 5. Keep the panes available through aggregation and immediate follow-up work. Close panes this run created once their results are consumed and no reviewer follow-up is pending; keep them only when the user asked to inspect them or the workflow explicitly awaits another reviewer turn.

@@ -14,6 +14,9 @@
     ],
     "skills": [
       "./agents/skills"
+    ],
+    "prompts": [
+      "./pi/prompts"
     ]
   },
   "dependencies": {

@@ -11,11 +11,13 @@ CONFIG_BACKUP_DIR=${CONFIG_BACKUP_DIR:-"$HOME/.config-backups/drdreo-config"}
 SOURCE_ROOTS=(
   "$ROOT/agents/skills"
   "$ROOT/pi/extensions"
+  "$ROOT/pi/prompts"
   "$ROOT/pi/context"
 )
 TARGET_ROOTS=(
   "$AGENTS_HOME/skills"
   "$PI_CODING_AGENT_DIR/extensions"
+  "$PI_CODING_AGENT_DIR/prompts"
   "$PI_CODING_AGENT_DIR"
 )
 
@@ -30,6 +32,8 @@ Usage:
   ./bin/config add skill PATH     Copy a skill into agents/skills
   ./bin/config add pi-extension PATH
                                  Copy an extension into pi/extensions
+  ./bin/config add pi-prompt PATH
+                                 Copy a prompt template into pi/prompts
   ./bin/config help
 
 Existing files are never deleted. `apply` moves conflicts into a timestamped
@@ -175,6 +179,7 @@ add_item() {
   case "$kind" in
     skill) destination="$ROOT/agents/skills" ;;
     pi-extension) destination="$ROOT/pi/extensions" ;;
+    pi-prompt) destination="$ROOT/pi/prompts" ;;
     *)
       printf 'Unknown item type: %s\n' "$kind" >&2
       return 2
