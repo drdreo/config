@@ -1,0 +1,10 @@
+id = "local.workspace-coordinator"
+name = "Workspace Coordinator"
+version = "0.1.0"
+min_herdr_version = "0.8.2"
+description = "Label the initial pane of each new workspace Coordinator."
+platforms = ["macos", "linux"]
+
+[[events]]
+on = "workspace.created"
+command = ["python3", "coordinator.py"]
