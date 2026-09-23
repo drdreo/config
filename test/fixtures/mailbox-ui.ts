@@ -9,7 +9,7 @@ export default function fixture(pi: ExtensionAPI) {
   let dialog: string | undefined;
   let answer: unknown = null;
   const save = () => writeFileSync(process.env.MAILBOX_TEST_STATE!, JSON.stringify({
-    text: context.ui.getEditorText(), idle: context.isIdle(), sessionId: context.sessionManager.getSessionId(), dialog, answer,
+    text: context.ui.getEditorText(), idle: context.isIdle(), sessionId: context.sessionManager.getSessionId(), sessionFile: context.sessionManager.getSessionFile(), dialog, answer,
   }));
   const confirm = async (ctx: ExtensionContext) => {
     dialog = "confirm"; answer = null; save();
@@ -26,6 +26,18 @@ export default function fixture(pi: ExtensionAPI) {
     dialog = "input"; answer = null; save();
     answer = await context.ui.input("TEST INPUT"); dialog = undefined; save();
   } });
+  pi.registerCommand("fixture-resume", {
+    description: "Test session replacement cleanup",
+    handler: async (path, ctx) => { await ctx.switchSession(path); },
+  });
+  pi.registerCommand("fixture-tree", {
+    description: "Test branch-summary failure/cancellation",
+    handler: async (args, ctx) => {
+      const target = ctx.sessionManager.getEntries().find((entry) => entry.type === "custom_message");
+      if (!target) throw new Error("Test needs an existing mailbox message");
+      await ctx.navigateTree(target.id, { summarize: true, customInstructions: args === "cancel" ? "TREE_CANCEL" : "TREE_FAIL" });
+    },
+  });
   pi.registerTool({ name: "fixture_approval", label: "Test approval", description: "Test-only approval gate", parameters: Type.Object({}),
     async execute(_id, _params, _signal, _update, ctx) {
       return { content: [{ type: "text", text: `approved=${await confirm(ctx)}` }], details: {} };

@@ -78,6 +78,28 @@ test("busy and blocked states retain reports outside Pi's restorable input queue
   assert.equal(state.sent.length, 1);
 });
 
+test("pending work rechecks idle when Pi emits no completion event", async (t) => {
+  const state = await setup(t);
+  state.busy(true);
+  await state.send();
+  await delay(30);
+  assert.equal(state.sent.length, 0);
+  state.busy(false); // Branch-summary failure/cancel has no completion hook in Pi 0.85.1.
+  await delay(300);
+  assert.equal(state.sent.length, 1);
+});
+
+test("shutdown cancels pending readiness checks", async (t) => {
+  const state = await setup(t);
+  state.busy(true);
+  await state.send();
+  await delay(30);
+  await state.handlers.get("session_shutdown")();
+  state.busy(false);
+  await delay(300);
+  assert.equal(state.sent.length, 0);
+});
+
 test("synchronous dispatch failure pauses with uncertainty, never retries", async (t) => {
   const state = await setup(t, () => { throw new Error("closed runtime"); });
   await state.send();

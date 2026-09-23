@@ -61,7 +61,7 @@ Custom messages remain visibly distinct in Pi's transcript, but Pi converts them
 | Lifetime | In-memory inbox/dedupe only. Reload, new/resumed/forked session and quit close the endpoint and discard pending reports. No durable/exactly-once guarantee across crashes. |
 | Crash | SIGKILL may leave inert files; discovery skips stale endpoints. No automatic deletion of other endpoints. Remove the private directory only after all participating sessions exit. |
 
-The receiver can incur model cost when idle. Send only authorized task reports to explicitly opted-in recipients. No unattended retry or discovery timer runs.
+The receiver can incur model cost when idle. Send only authorized task reports to explicitly opted-in recipients. Pending work rechecks readiness every 250 ms while Pi is busy: failed/cancelled branch summaries can omit completion events. The check stops when paused, blocked, empty or shutting down; it never retries a submitted message. No discovery timer runs.
 
 ## Validation
 
@@ -72,4 +72,4 @@ python3 test/agent-mailbox-tui.py
 
 The adapter tests reuse the installed Pi loader; set `PI_MAILBOX_PI_ROOT` to the package root if `pi` is a wrapper rather than an npm executable. The TUI suite needs `tmux`, Python 3 and `pi` on PATH. It creates its own tmux server, private HOME/config directories, and local deterministic HTTP/SSE model, then stops only its server. It prints the retained private artifact directory with screen captures, model requests and results.
 
-Coverage includes idle wake, busy follow-up, draft/cursor preservation in regular/fullscreen TUIs, Escape/Alt-Up, wrapped and uncovered dialogs, model-driven multi-hop tool routing, dedupe, stale/missing recipients, and reload/new-session/shutdown cleanup. Adapter tests cover synchronous/asynchronous unconfirmed dispatch. The model fixture proves actual Pi request/tool execution, not a hosted model's instruction-following quality. No live coordinator or human pane is a test target.
+Coverage includes idle wake, busy follow-up, draft/cursor preservation in regular/fullscreen TUIs, Escape/Alt-Up, wrapped and uncovered dialogs with pause mitigation, branch-summary failure/cancellation, model-driven multi-hop tool routing, dedupe, stale/missing recipients, and reload/clone/resume/new-session/shutdown cleanup. Adapter tests cover synchronous/asynchronous unconfirmed dispatch. The model fixture proves actual Pi request/tool execution, not a hosted model's instruction-following quality. No live coordinator or human pane is a test target.

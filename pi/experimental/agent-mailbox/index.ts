@@ -15,7 +15,7 @@ export default function mailbox(pi: ExtensionAPI) {
   let paused = false;
   let blocked = false;
   let dispatching = false;
-  let scheduled: ReturnType<typeof setImmediate> | undefined;
+  let scheduled: ReturnType<typeof setTimeout> | undefined;
   let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
   let directory: string;
 
@@ -38,16 +38,26 @@ export default function mailbox(pi: ExtensionAPI) {
     ctx.ui.setStatus("agent-mailbox", `mail ${pending ? `${pending} pending` : "idle"}${paused ? " · paused" : blocked ? " · waiting for user" : ""} · /mailbox`);
   }
 
-  function schedule() {
-    if (stopped || scheduled) return;
+  function schedule(delay = 0) {
+    if (stopped) return;
+    if (scheduled) {
+      if (delay) return;
+      clearTimeout(scheduled);
+    }
     // Leave the event handler before starting another run (including UI close / agent_settled).
-    scheduled = setImmediate(() => { scheduled = undefined; drain(); });
+    scheduled = setTimeout(() => { scheduled = undefined; drain(); }, delay);
   }
 
   function drain() {
-    if (stopped || !endpoint || !ctx || paused || blocked || dispatching || !ctx.isIdle()) return;
+    if (stopped || !endpoint || !ctx || paused || blocked || dispatching) return;
     const record = inbox.next();
     if (!record) return;
+    if (!ctx.isIdle()) {
+      // Failed/cancelled /tree summaries can become idle without a completion event.
+      // Poll readiness only while work is pending, never retry a submitted message.
+      schedule(250);
+      return;
+    }
     dispatching = true;
     record.state = "submitted";
     // sendMessage is fire-and-forget: its async rejection is not returned to us.
@@ -109,7 +119,7 @@ export default function mailbox(pi: ExtensionAPI) {
   });
   pi.on("session_shutdown", async () => {
     stopped = true;
-    if (scheduled) clearImmediate(scheduled);
+    if (scheduled) clearTimeout(scheduled);
     if (confirmationTimer) clearTimeout(confirmationTimer);
     ctx?.ui.setStatus("agent-mailbox", undefined);
     await endpoint?.close();

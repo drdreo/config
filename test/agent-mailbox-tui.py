@@ -25,6 +25,8 @@ PI = shutil.which("pi")
 REQUESTS = []
 LOCK = threading.Lock()
 RELEASE = threading.Event()
+TREE_STARTED = threading.Event()
+TREE_RELEASE = threading.Event()
 
 
 def wait(predicate, description, timeout=20):
@@ -41,6 +43,12 @@ def wait(predicate, description, timeout=20):
 
 
 class Model(http.server.BaseHTTPRequestHandler):
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # Escape intentionally cancels streaming requests in this suite.
+
     def log_message(self, *_args):
         pass
 
@@ -52,6 +60,17 @@ class Model(http.server.BaseHTTPRequestHandler):
         last = body["messages"][-1]
         text = json.dumps(last.get("content", ""), ensure_ascii=False)
         call = None
+        if "TREE_FAIL" in text or "TREE_CANCEL" in text:
+            TREE_STARTED.set()
+            TREE_RELEASE.wait(20)
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            try:
+                self.wfile.write(b'{"error":{"message":"deliberate branch-summary fixture failure"}}')
+            except BrokenPipeError:
+                pass  # The cancellation test deliberately closes this request.
+            return
         if last["role"] != "tool":
             if "BUSY_HOLD" in text:
                 RELEASE.wait(20)
@@ -82,6 +101,8 @@ def tmux(*args, check=True):
 
 def key(name, *keys):
     tmux("send-keys", "-t", name, *keys)
+    if "Escape" in keys:
+        time.sleep(.1)  # Let Pi disambiguate lone ESC before the next test keystroke.
 
 
 def type_text(name, text):
@@ -295,6 +316,44 @@ def run(port):
     settle("reviewer", reviewer, "paused")
     passed("pause/resume and minimal mailbox inspection work without injecting user messages")
 
+    command("reviewer", "/mailbox pause")
+    wait(lambda: rpc(reviewer, "inspect")["paused"], "pause before uncovered dialogs")
+    before = len(REQUESTS)
+    key("reviewer", "F9")
+    wait(lambda: state("reviewer").get("dialog") == "confirm", "paused raw dialog")
+    send(reviewer, "paused-raw", "Yes\n")
+    time.sleep(.3)
+    assert state("reviewer")["answer"] is None and len(REQUESTS) == before
+    key("reviewer", "Escape")
+    wait(lambda: state("reviewer")["answer"] is False, "paused raw dialog denied")
+    key("reviewer", "C-l")
+    time.sleep(.2)
+    send(reviewer, "paused-picker", "PICKER_PAUSED")
+    time.sleep(.3)
+    assert len(REQUESTS) == before
+    assert "Enter to select · Ctrl+S to set as default" in capture("reviewer", "paused-picker")
+    key("reviewer", "Escape")
+    command("reviewer", "/mailbox resume")
+    settle("reviewer", reviewer, "paused-picker")
+    assert delivered(reviewer, "paused-raw")
+    passed("explicit pause prevents model wake during uncovered shortcut and built-in dialogs")
+
+    for mode in ["fail", "cancel"]:
+        TREE_STARTED.clear()
+        TREE_RELEASE.clear()
+        command("reviewer", "/fixture-tree " + mode)
+        wait(TREE_STARTED.is_set, "branch summary request")
+        assert not state("reviewer")["idle"]
+        send(reviewer, "tree-" + mode, "REPORT_DURING_SUMMARY")
+        time.sleep(.3)
+        assert not delivered(reviewer, "tree-" + mode)
+        if mode == "cancel":
+            key("reviewer", "Escape")
+        TREE_RELEASE.set()
+        settle("reviewer", reviewer, "tree-" + mode)
+        capture("reviewer", "tree-" + mode)
+    passed("pending reports wake after branch-summary failure and cancellation without a completion event")
+
     type_text("reviewer", "ABORT_human_draft")
     key("reviewer", "Left", "Left")
     RELEASE.clear()
@@ -322,6 +381,19 @@ def run(port):
     wait(lambda: "Reloaded keybindings" in tmux("capture-pane", "-t", "reviewer", "-p"), "reload UI finished")
     time.sleep(.3)
     old_session = state("reviewer")["sessionId"]
+    old_file = state("reviewer")["sessionFile"]
+    command("reviewer", "/clone")
+    clone = wait(lambda: [d for d in addresses("reviewer") if d["address"] != new_address], "clone rotates address")[0]
+    assert clone["sessionId"] != old_session
+    assert not (MAIL / (new_address + ".sock")).exists()
+    time.sleep(.3)
+    command("reviewer", "/fixture-resume " + old_file)
+    resumed = wait(lambda: [d for d in addresses("reviewer") if d["address"] != clone["address"]], "resume rotates address")[0]
+    assert resumed["sessionId"] == old_session
+    assert not (MAIL / (clone["address"] + ".sock")).exists()
+    assert rpc(resumed["address"], "inspect")["records"] == []
+    new_address = resumed["address"]
+    time.sleep(.3)
     command("reviewer", "/new")
     newest = wait(lambda: [d for d in addresses("reviewer") if d["address"] != new_address], "new session rotates address")[0]
     assert newest["sessionId"] != old_session
@@ -330,7 +402,7 @@ def run(port):
     command("reviewer", "/quit")
     wait(lambda: not addresses("reviewer"), "shutdown descriptor cleanup")
     assert not (MAIL / (newest["address"] + ".sock")).exists()
-    passed("reload/new-session/shutdown clean up old endpoints and rotate identity; old recipients cannot reach replacements")
+    passed("reload/clone/resume/new-session/shutdown clean up endpoints and rotate identity; old recipients cannot reach replacements")
 
     # A killed process leaves inert files, not a reusable recipient.
     pid = addresses("specialist")[0]["pid"]
@@ -354,6 +426,7 @@ if __name__ == "__main__":
         print(f"PASS {len(RESULTS)} TUI scenarios; evidence: {ART}")
     finally:
         RELEASE.set()
+        TREE_RELEASE.set()
         for name in ["reviewer", "specialist", "lead", "coordinator"]:
             try:
                 capture(name, "final")
