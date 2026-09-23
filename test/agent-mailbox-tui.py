@@ -341,7 +341,18 @@ def run(port):
     for mode in ["fail", "cancel"]:
         TREE_STARTED.clear()
         TREE_RELEASE.clear()
-        command("reviewer", "/fixture-tree " + mode)
+        if mode == "fail":
+            command("reviewer", "/fixture-tree")
+        else:
+            # Only the built-in tree UI wires Escape to abortBranchSummary().
+            command("reviewer", "/tree")
+            wait(lambda: "Session Tree" in tmux("capture-pane", "-t", "reviewer", "-p"), "tree selector")
+            key("reviewer", *(["PPage"] * 10), "Enter")
+            wait(lambda: "Summarize branch?" in tmux("capture-pane", "-t", "reviewer", "-p"), "summary choice")
+            key("reviewer", "Down", "Down", "Enter")
+            wait(lambda: "Custom summarization instructions" in tmux("capture-pane", "-t", "reviewer", "-p"), "summary prompt")
+            type_text("reviewer", "TREE_CANCEL")
+            key("reviewer", "Enter")
         wait(TREE_STARTED.is_set, "branch summary request")
         assert not state("reviewer")["idle"]
         send(reviewer, "tree-" + mode, "REPORT_DURING_SUMMARY")
@@ -349,9 +360,16 @@ def run(port):
         assert not delivered(reviewer, "tree-" + mode)
         if mode == "cancel":
             key("reviewer", "Escape")
-        TREE_RELEASE.set()
-        settle("reviewer", reviewer, "tree-" + mode)
-        capture("reviewer", "tree-" + mode)
+            # Prove cancellation/recovery BEFORE allowing the HTTP failure response.
+            settle("reviewer", reviewer, "tree-cancel")
+            assert not TREE_RELEASE.is_set()
+            assert "Branch summarization cancelled" in capture("reviewer", "tree-cancel")
+            key("reviewer", "Escape")  # Close the built-in tree selector reopened on cancellation.
+            TREE_RELEASE.set()
+        else:
+            TREE_RELEASE.set()
+            settle("reviewer", reviewer, "tree-fail")
+            capture("reviewer", "tree-fail")
     passed("pending reports wake after branch-summary failure and cancellation without a completion event")
 
     type_text("reviewer", "ABORT_human_draft")
