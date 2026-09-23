@@ -165,6 +165,14 @@ To stop labeling new workspaces, run `herdr plugin unlink local.workspace-coordi
 | [`pi-env.ts`](pi/extensions/pi-env.ts) | Applies global and trusted project `env` settings to Pi sessions |
 | [`thinking-footer.ts`](pi/extensions/thinking-footer.ts) | Compact footer with model, thinking, usage, cache, cost, and git context |
 
+### Experimental agent mailbox
+
+The [agent mailbox PoC](pi/experimental/agent-mailbox/) sends local inter-agent
+reports without typing into Pi's editor. It has a compact footer indicator and
+receipt inspector. It requires explicit `-e` activation and is not installed by
+`bin/config apply` or auto-loaded by this package. Read its dialog and delivery
+limitations before enabling it.
+
 ## What belongs here
 
 Track declarative, reviewable source: skills, extensions, prompts, themes,
