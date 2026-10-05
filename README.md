@@ -110,13 +110,15 @@ bundle.
 | [`daylog`](agents/skills/daylog/) | Proactively submit factual work handovers; Athena decides relevance |
 | [`herdr`](agents/skills/herdr/) | Inspect and control Herdr sessions safely |
 | [`notion-cli`](agents/skills/notion-cli/) | Drive `ntn` using its live CLI documentation |
+| [`pr-description`](agents/skills/pr-description/) | Concise PR descriptions with Mermaid diagrams and verified Linear references |
 | [`ship-ticket`](agents/skills/ship-ticket/) | Take Linear or GitHub tickets through implementation and PR |
 | [`teach-me-something`](agents/skills/teach-me-something/) | Short, code-grounded lessons from the active repository |
 | [`texlr-handoff`](agents/skills/texlr-handoff/) | Produce designed PDF handoff documents |
 
-PR drafting instructions and `ship-ticket` also require the separately installed
-`pr-description` skill at `~/.agents/skills/pr-description/SKILL.md`; it is not
-bundled in this repository. If unavailable, PR drafting stops at that prerequisite.
+PR drafting instructions and `ship-ticket` use the bundled `pr-description`
+skill, installed at `~/.agents/skills/pr-description/SKILL.md` by `./bin/config apply`.
+GitHub PR diagrams default to Mermaid; ASCII is a fallback for unsupported targets or an explicit request.
+PR bodies include before/after evidence and merge danger: rollback reversibility and blast radius.
 
 ### Work reporting
 

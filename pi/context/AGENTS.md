@@ -10,7 +10,7 @@ The pane labeled `Coordinator` delegates whole tasks and skill invocations to ta
 
 # PR descriptions
 
-Before drafting, creating, or updating a PR title or body, load `~/.agents/skills/pr-description/SKILL.md`, including when another skill handles submission. Always start the visible PR body with a one- or two-sentence TLDR of what changes, then an optional high-level diagram when it clarifies the flow, architecture, or knowledge change. Use short, single-topic paragraphs separated by blank lines, fenced diagrams, and a few descriptive headings when needed; avoid walls of text. Use STE-inspired plain English and verified Linear references: `Closes`, `Part of`, or `Related to`, according to the actual scope. Repository-specific PR rules take precedence.
+Before drafting, creating, or updating a PR title or body, load `~/.agents/skills/pr-description/SKILL.md`, including when another skill handles submission. Always start the visible PR body with a one- or two-sentence TLDR of what changes, then an optional high-level diagram when it clarifies the flow, architecture, or knowledge change. Use fenced `mermaid` diagrams for GitHub PRs; use ASCII only for unsupported targets or an explicit request. Use short, single-topic paragraphs separated by blank lines and a few descriptive headings when needed; avoid walls of text. Default to `## Evidence` with concrete before/after proof and `## Merge Danger` with rollback reversibility and blast radius; disclose missing verification. Use STE-inspired plain English and verified Linear references: `Closes`, `Part of`, or `Related to`, according to the actual scope. Repository-specific PR rules take precedence.
 
 # Work reporting
 

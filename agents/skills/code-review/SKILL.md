@@ -55,7 +55,25 @@ All axes run as **parallel sub-agents** so they don't pollute each other's conte
 
 ### Pi execution contract
 
-The parent agent owns clarification and orchestration. Sub-agents run in isolated, non-interactive sessions:
+The **review lead** is the agent executing this full-review workflow. It owns
+clarification, helper orchestration and aggregation. References below to the
+parent or current session mean this review lead, not the workspace coordinator
+that may have delegated the review.
+
+```text
+Workspace coordinator (when present)
+└─ Review lead — reports the combined review to the coordinator
+   ├─ Standards — reports only to the review lead
+   ├─ Spec — reports only to the review lead
+   └─ Correctness — reports only to the review lead
+```
+
+Keep the lead's upstream `report_to` separate from helper routing. Never copy
+that upstream recipient into a helper prompt. Helpers do not discover or target
+a pane labeled `Coordinator`; their immediate parent is the review lead. A
+standalone review has no upstream coordinator: the lead reports to the user.
+
+Sub-agents run in isolated, non-interactive sessions:
 
 - If input is missing, require it to return `BLOCKED: <reason>`.
 - Before launching reviewers, run `test "${HERDR_ENV:-}" = 1`.
@@ -74,6 +92,37 @@ Whatever the user said is the fixed point (a commit SHA, branch name, tag, `main
 Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
 
 Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents.
+
+### 1a. Read the PR's stack context
+
+For a GitHub PR, check whether it belongs to a stack before judging scope or
+rollout safety. Use `gh` to read the target's full description and base/head
+branches, then inspect explicit stack links or markers and PRs whose base/head
+branches connect to it. A shared title, author or ordinary cross-reference alone
+does not establish a stack.
+
+Follow the identified parent/child chain and read the **full descriptions of all
+stack members**, including relevant merged prerequisites. Do not substitute PR
+titles, search snippets or an agent summary for those reads. Record the ordering,
+URLs, states and pinned base/head SHAs, plus each member's stated responsibility
+and deployment sequence. If discovery or a description read fails, report partial
+stack coverage rather than treating the PR as standalone.
+
+Inspect related PR diffs when needed to verify a dependency, deferred requirement,
+activation gate or rollout claim. Keep the reviewed diff pinned to the requested
+PR's actual base/head; reading stack context does not turn this into a full review
+of every member. Label descriptions-only context separately from code verified.
+
+Judge both the requested PR on its own deployment and the promised stack sequence.
+Do not flag work explicitly assigned to a later member as missing here, but verify
+that the earlier member is safe independently. Deferred defaults do not prove all
+producer paths are inactive; check optional/manual paths too. A stacked or merged
+PR does not prove deployment, and a later fix does not erase an earlier unsafe
+rollout window.
+
+Give every reviewer the same stack map, full descriptions or readable evidence
+paths, and the boundary between reviewed code and context-only members. Include
+the stack assumptions and any uninspected dependency in the final scope report.
 
 ### 2. Identify the spec source
 
@@ -115,8 +164,25 @@ When running through Herdr:
 1. Before creating panes, inspect the current labels with `herdr pane current --current` and the workspace/tab commands. Preserve user-chosen names; replace default or agent-generated labels. For a PR review, use `pr-<number>` for the workspace and name the tab with the intent, such as `Review login timeout fix`, rather than leaving it as `1`. Summarize the PR title and available context yourself in 3–7 plain-language words; do not start a separate model or agent for naming. For a non-PR review, summarize the requested change. If only the PR number is known, use `Review PR #<number>` temporarily, then update it after reading the PR. Use explicit IDs from the responses and do not change focus.
 2. Create one sibling pane per active axis in the current tab, with the review working directory as its `cwd` and without changing focus. Label each new pane by its axis (`Standards`, `Spec`, or `Correctness`) using `herdr pane rename`; an agent name alone does not label the pane.
 3. Start a Pi agent in each pane, using concise role names such as `standards-review`, `spec-review`, and `correctness-review`. Preserve the parent review's provider, model, thinking level, approval mode, and isolation flags.
-4. Start all agents first, then submit every prompt without waiting. After all prompts are in flight, wait for and read each result. Do not serialize the review by using a wait flag on the first prompt.
+4. Resolve the lead's own live pane with `herdr pane current --current` and record its pane ID and agent identity as the helpers' recipient. Give each helper a task/axis key and an explicit `report_to` naming this lead, not the lead's upstream recipient. State whether the lead will wait and collect output (the default here) or expects asynchronous delivery under the Herdr protocol. Start all agents first, then submit every prompt without waiting. After all prompts are in flight, wait for and read each result. Do not serialize the review by using a wait flag on the first prompt.
 5. Keep the panes available through aggregation and immediate follow-up work. Close panes this run created once their results are consumed and no reviewer follow-up is pending; keep them only when the user asked to inspect them or the workflow explicitly awaits another reviewer turn.
+
+Include this routing instruction in **every active sub-agent's prompt**, with
+actual values substituted before submission:
+"You are the <axis> helper for review task <task-key>. Your immediate parent and
+only report recipient is the review lead <lead-agent-identity> at
+report_to=<lead-pane-id>. Do not report to the workspace coordinator, the lead's
+upstream recipient, or sibling reviewers. Delivery mode: <collected-output or
+asynchronous>. In collected-output mode, return findings or BLOCKED in your
+normal final output; the lead is waiting and collecting it, so do not send a
+second agent prompt or completion notification. In asynchronous mode, deliver
+only to this verified review lead using the Herdr delivery protocol. If the lead
+is unavailable or delivery is uncertain, retain the result and mark delivery
+pending; never reroute it to the coordinator. Route approval needs and failures
+to the lead by the same path; do not ask the user or approve actions yourself."
+
+For detached subprocesses, use `collected-output` and identify the parent review
+lead/process instead of inventing Herdr IDs.
 
 Include this reporting instruction in **every active sub-agent's prompt**:
 "After your findings, note up to two concrete strengths supported by the diff
@@ -156,6 +222,14 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
   | Deployment safety | migrations, API schemas, config/infra files | breaking changes, rollback safety, flag/migration ordering |
 
 ### 5. Aggregate
+
+The review lead collects every active axis result before delivering the combined
+review. Missing or blocked axes remain explicit limitations, not successful
+reviews. Only the lead reports upstream: send the aggregate to its assigned
+coordinator using the Herdr delivery protocol, or answer the user directly for a
+standalone review. Do not forward routine individual helper completions. A
+material blocker, failed validation or approval need may be reported upstream
+before all axes finish, clearly labeled partial and summarized by the lead.
 
 Present the detailed findings under `## Standards`, `## Spec`, and
 `## Correctness` headings, verbatim or lightly cleaned. Keep strengths and review

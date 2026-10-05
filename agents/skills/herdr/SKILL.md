@@ -96,6 +96,17 @@ IDs and live agent names are scoped to one server. Two saved SSH machines can bo
 
 Resolve your role with `herdr pane current --current` and `herdr pane list --workspace <returned-workspace-id>`. An explicit worker assignment takes precedence. Otherwise, the agent in the pane whose `label` is exactly `Coordinator` coordinates that workspace. Unlabeled agents work normally; do not infer the role from a pane ID suffix, sidebar position, or being directly prompted. If multiple panes have that label, ask the user which one owns coordination before delegating.
 
+Coordinator identity initialization stays inline, not delegated. After resolving
+the live role, only when this agent is the unique current `Coordinator` and has
+no explicit worker or independent specialist assignment, read
+`/Users/andreashahn/projects/athena/.pi/skills/athena-identity/SKILL.md` and follow
+its gates before reading identity. Reuse the fresh role evidence. On a pane
+move/rename or assignment change, or after resuming without reliable role
+context, re-resolve; do not load identity for missing or ambiguous roles.
+Already-loaded identity cannot be erased; use a fresh non-Athena context when
+specialist isolation is required. If the skill is unavailable, continue without
+identity and report the relevant gap. Do not search for another checkout.
+
 The local `local.workspace-coordinator` plugin ([source](../../../herdr/plugins/workspace-coordinator/), [setup](../../../README.md#herdr-workspace-coordinator)) labels the initial, unnamed pane on `workspace.created`. It preserves existing pane labels and does not retrofit existing workspaces, start agents, or load this skill into them. For an existing workspace, the user can designate a pane by asking to name it `Coordinator`; use its live pane ID. Do not silently appoint a replacement when that pane closes. A renamed pane loses the role; a moved pane is evaluated in its destination workspace.
 
 As coordinator, keep the workspace as the user's category (for example, Sidequests, Project, or Main work), and start an independent worker for each independent task rather than executing it inline. Answer short questions and handle coordination or skill edits inline; honor explicit requests to do the work yourself or wait for a result. Preserve the `Coordinator` pane label and use `Coordinator` as its tab title when that tab has no user-chosen title; put task-specific titles on worker tabs.
@@ -104,7 +115,7 @@ A delegated agent is a worker, not another workspace coordinator. Include that r
 
 1. Inspect existing agents and tabs. Route follow-ups to the existing task's worker; create a named task tab in the current workspace for new work, preserving focus with `--no-focus`.
 2. For coding tasks, use a separate Git worktree and branch per independent task, following the repository's worktree rules. Create the task tab with that worktree as its cwd. Read-only tasks can share the current cwd. Do not switch the coordinator's checkout, reuse a checkout another worker is editing, or create another Herdr workspace by default. If isolation cannot be established safely, ask rather than silently sharing writes.
-3. Start a uniquely named agent in the returned root pane. Use the requested agent kind, otherwise the coordinator's kind when supported. Give it the task, relevant context, scope limits, validation expectations, a stable task key, and the coordinator's pane ID as `report_to`. Require prompt completion/blocker reporting under the delivery protocol below; do not tell an asynchronous lead to finish silently. State that it is a worker and must not commit, push, merge, or broaden scope beyond the user's authorization.
+3. Start a uniquely named agent in the returned root pane. Use the requested agent kind, otherwise the coordinator's kind when supported. Give it the task, relevant context, scope limits, validation expectations, a stable task key, and the coordinator's pane ID as `report_to`. Require prompt completion/blocker reporting under the delivery protocol below; do not tell an asynchronous lead to finish silently. State that it is a worker and pass explicit Git/publication permissions using the defaults below. Do not add a blanket no-commit/no-push restriction to an implementation or shipping task; preserve the user's actual limits and require approval for scope expansion.
 4. Submit with `herdr agent prompt <worker> "<task>"` without `--wait`. Record the outstanding deliverable and report the worker name and task location, then end the turn so the user can submit another task. Do not poll or wait for task completion in the launch turn; bounded startup readiness checks are separate from waiting for the work. Successful launch is not task completion or result delivery.
 5. Keep a task map of task key, worker name, tab/pane IDs, worktree/branch, last observed state/time, latest update key, delivery state, and next action. At the start of every later coordinator turn with outstanding work, reconcile those workers with live Herdr state, even when the user's new message is about something else. Collect ready results, surface blockers, and report material changes without making the user ask for status. Do not answer approvals on the user's behalf.
 
@@ -115,6 +126,47 @@ herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "<task-cwd>" --label "<
 ```
 
 “Connected” means the coordinator tracks and controls the worker through Herdr; workers do not inherit its conversation. Pass necessary context explicitly. The reporting protocol below requires delivery attempts, not guaranteed callbacks. Do not close completed task tabs or remove worktrees without the user's approval.
+
+### Pass task-scoped Git and publication permissions
+
+Derive permissions from the user's request and carry them into the handoff. Do
+not make the user approve each ordinary Git step already covered by that request.
+Explicit user restrictions and repository rules override these defaults:
+
+| Request | Default permission |
+| --- | --- |
+| Review, investigate, explain, or plan | Read-only; no fixes, commits, pushes, PR creation or submitted reviews/comments unless requested. |
+| Implement or fix a task | Edit and validate in the task worktree; commit the task-owned changes after validation. Push and PR publication are not implied by a local implementation request alone. |
+| Ship a task, implement and open a PR, or fix an existing PR | Implement, validate, commit, push the task branch normally, and create/update the relevant PR as needed. Do not stop at an uncommitted local fix solely to ask for these Git steps again. |
+
+An existing PR must be the target of the requested fix; merely discovering a PR
+during a review does not authorize changes or publication. A later instruction
+to fix that reviewed PR changes the task from review-only to implementation and
+publication, unless the user limits it to local work.
+
+Include the allowed actions, target worktree/branch and repository/PR, validation
+requirements, and prohibited actions in every coding handoff. For example:
+`Git: commit after validation; normal push to the existing PR branch and update
+that PR allowed; no merge, force-push, protected-branch writes or scope expansion.`
+For a local implementation, state `commit allowed; push/PR publication not yet
+requested`. Review helpers stay read-only even when their lead may publish.
+Record these permissions in the task map. Relay later user scope changes to the
+same lead; do not leave a coordinator-imposed restriction in place after the
+user has authorized the next step. Never override an explicit user restriction
+by reinterpreting these defaults.
+
+Before committing, inspect the exact diff and stage only task-owned changes;
+never include unrelated user or worker edits. Before pushing, verify the target
+remote and branch and report the checks actually run. If required validation
+fails or a publication prerequisite is unresolved, report the blocker rather
+than claiming readiness. Use the PR-description skill for PR titles/bodies and
+follow repository submission rules.
+
+Merging, force-pushing (including `--force-with-lease`), writes to protected
+branches, and changes beyond the approved implementation scope still require
+explicit approval for that action. A shipping request does not waive these
+boundaries or authorize bypassing branch protection. If normal publication
+requires one of these actions, stop and ask instead of silently escalating.
 
 ### Close the result-delivery loop
 
@@ -155,7 +207,7 @@ This skill cannot wake an idle agent. Do not claim an unattended periodic heartb
 
 ## Delegate skill invocations as a whole
 
-When acting as coordinator, delegate a task that invokes a skill to one task lead rather than running the skill's workflow yourself. This includes slash commands and prompt aliases that expand into skill instructions. Resolve the skill's actual `SKILL.md` path and hand off the original request, all arguments and mode flags, target repository/cwd, refs or PR URLs, relevant prior context, and authorization limits. Tell the lead to read that file and execute the requested mode; sending only a slash-command string does not ensure the child harness invokes it. Coordination and skill-edit requests stay inline, as do tasks the user explicitly asks you to execute yourself.
+When acting as coordinator, delegate a task that invokes a skill to one task lead rather than running the skill's workflow yourself. This includes slash commands and prompt aliases that expand into skill instructions. Resolve the skill's actual `SKILL.md` path and hand off the original request, all arguments and mode flags, target repository/cwd, refs or PR URLs, relevant prior context, and authorization limits, including the task-scoped Git/publication permissions above. Tell the lead to read that file and execute the requested mode; sending only a slash-command string does not ensure the child harness invokes it. Coordination and skill-edit requests stay inline, as do tasks the user explicitly asks you to execute yourself.
 
 Identify the lead as a worker responsible for the whole task, not a workspace coordinator. It owns the skill's required helper agents, waits, validation, and combined report. It may create those helpers through Herdr in its task tab; give each helper only its assigned scope, not another instruction to delegate the whole skill. Pass the lead the Herdr skill path and these role constraints as well, since it does not inherit your context. Follow-ups and clarification answers go back to the same lead. The workspace coordinator submits without `--wait` and stays available; the lead may wait for its own helpers.
 
