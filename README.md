@@ -165,6 +165,7 @@ To stop labeling new workspaces, run `herdr plugin unlink local.workspace-coordi
 | Extension | Purpose |
 | --- | --- |
 | [`pi-env.ts`](pi/extensions/pi-env.ts) | Applies global and trusted project `env` settings to Pi sessions |
+| [`herdr-context.ts`](pi/extensions/herdr-context.ts) | Inside Herdr, tells the agent to load the `herdr` skill before the first task |
 | [`thinking-footer.ts`](pi/extensions/thinking-footer.ts) | Compact footer with model, thinking, usage, cache, cost, and git context |
 
 ## What belongs here

@@ -111,16 +111,16 @@ Look for the originating spec, in this order:
 
 ### 3. Identify the standards sources
 
-Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
+Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md`, `CONTRIBUTING.md`, or prompting guidance for knowledge files.
 
 On top of whatever the repo documents, the Standards axis flags design problems that agent-written code still tends to introduce, even when the repo documents nothing:
 
 - Speculative abstraction, parameters, or fallbacks the spec doesn't need.
 - Logic duplicated within the change, or reimplemented where an existing helper fits.
 - Dead code, leftover scaffolding, or comments that narrate the change.
-- Knowledge smells in agent-facing files (skills, prompts, knowledge files, docs): rules that duplicate or contradict existing guidance, sit at the wrong scope, hard-code volatile details instead of pointing to their source of truth, or add verbose prose that doesn't change agent behavior or it could infer by itself.
+- Knowledge files (skills, prompts, AGENTS.md, agent docs): instructions that do not change useful behavior or that the agent would infer by itself; instructions it cannot follow with its actual context and tools; ambiguous wording; restrictions broader than intended; rules that duplicate, contradict, or sit at the wrong scope relative to existing guidance; and volatile details that should point to their source. Every word should earn its place: propose the simpler wording that keeps the meaning.
 
-These are judgement calls, never hard violations. A documented repo standard overrides them, and anything tooling enforces is skipped.
+These are judgement calls, not hard violations, and default to `minor`. An instruction the agent cannot follow, or a restriction broader than intended, can be `major` because it changes agent behavior. A documented repo standard overrides them, and anything tooling enforces is skipped.
 
 ### 4. Spawn the sub-agents in parallel
 
