@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents and reports them side by side. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents, reports them side by side, and ends with a go/no-go verdict (one-way or two-way door) that can approve the PR with LGTM. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
 ---
 
 ## Mode selection
@@ -17,7 +17,7 @@ full review. `quick` and `simple` are aliases for the same lightweight mode.
 ## Quick review
 
 A lightweight, read-only review in the current agent session. No sub-agents,
-Herdr orchestration, spec discovery, standards/smell audit, or mandatory
+Herdr orchestration, spec discovery, standards/baseline audit, or mandatory
 three-pass exploration. Do not run the full-review process or post PR comments.
 
 1. **Choose scope.** Honor an explicit ref, PR, or working-tree scope. For a ref,
@@ -77,7 +77,7 @@ Sub-agents run in isolated, non-interactive sessions:
 
 - If input is missing, require it to return `BLOCKED: <reason>`.
 - Before launching reviewers, run `test "${HERDR_ENV:-}" = 1`.
-- When the check passes, launch every reviewer through Herdr so its pane and lifecycle remain visible. Run `herdr --skill`, then inspect `herdr workspace`, `herdr tab`, `herdr pane`, and `herdr agent`; the installed CLI is the syntax authority. Do not launch child Pi processes directly through Bash.
+- When the check passes, launch every reviewer through Herdr so its pane and lifecycle remain visible. Run `herdr --skill` once per review and follow it; the installed CLI is the syntax authority. Use the caller context Herdr injects instead of discovering topology, and open a command group's help only when the guide doesn't cover a step or a command fails. Do not launch child Pi processes directly through Bash.
 - When the check fails, use detached Pi subprocesses unless the user explicitly requested Herdr. An explicit Herdr request outside Herdr is blocked; report that Herdr is unavailable and stop.
 - Record every reviewer pane, process, and temporary file created by the run so cleanup cannot affect user-owned resources.
 
@@ -137,25 +137,14 @@ Look for the originating spec, in this order:
 
 Anything in the repo that documents how code should be written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below: a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
+On top of whatever the repo documents, the Standards axis flags design problems that agent-written code still tends to introduce, even when the repo documents nothing:
 
-- **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
-- **Always a judgement call.** Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation. Like any standard here, skip anything tooling already enforces.
+- Speculative abstraction, parameters, or fallbacks the spec doesn't need.
+- Logic duplicated within the change, or reimplemented where an existing helper fits.
+- Dead code, leftover scaffolding, or comments that narrate the change.
+- Knowledge smells in agent-facing files (skills, prompts, knowledge files, docs): rules that duplicate or contradict existing guidance, sit at the wrong scope, hard-code volatile details instead of pointing to their source of truth, or add verbose prose that doesn't change agent behavior or it could infer by itself.
 
-Each smell reads *what it is* → *how to fix*; match it against the diff:
-
-- **Mysterious Name**: a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
-- **Duplicated Code**: the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
-- **Feature Envy**: a method that reaches into another object's data more than its own. → move the method onto the data it envies.
-- **Data Clumps**: the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
-- **Primitive Obsession**: a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
-- **Repeated Switches**: the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
-- **Shotgun Surgery**: one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
-- **Divergent Change**: one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
-- **Speculative Generality**: abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
-- **Message Chains**: long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
-- **Middle Man**: a class or function that mostly just delegates onward. → cut it, call the real target direct.
-- **Refused Bequest**: a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
+These are judgement calls, never hard violations. A documented repo standard overrides them, and anything tooling enforces is skipped.
 
 ### 4. Spawn the sub-agents in parallel
 
@@ -189,13 +178,19 @@ Include this reporting instruction in **every active sub-agent's prompt**:
 or inspected tests, with a file/symbol reference and why they matter. Do not
 invent praise or treat an absence of findings as proof of correctness. State
 any review limitation; distinguish tests inspected from tests actually run.
-Keep these notes separate from findings and within the stated word budget."
+Keep these notes separate from findings and within the stated word budget.
+Tag every finding with one severity: `blocker` — merging now risks an outage,
+data loss or corruption, a security exposure, a broken main user flow, or an
+unsafe irreversible rollout; `major` — a real defect, spec gap, or uncovered
+regression that callers or users will hit, which must be fixed before merge;
+`minor` — an improvement, judgement call, or nit that never blocks merge.
+Judgement calls are `minor` unless you can show concrete harm."
 
 **Standards sub-agent prompt** should include:
 
 - The full diff command and commit list.
-- The list of standards-source files you found in step 3, **plus the smell baseline from step 3** pasted in full (the sub-agent has no other access to it).
-- The brief: "You are running as a detached, non-interactive Pi sub-agent. Do not call `ask_user_question`, invoke a skill, delegate, or start a workflow; return `BLOCKED: <reason>` if required input is unavailable. Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
+- The list of standards-source files you found in step 3, **plus the design baseline from step 3** pasted in full (the sub-agent has no other access to it).
+- The brief: "You are running as a detached, non-interactive Pi sub-agent. Do not call `ask_user_question`, invoke a skill, delegate, or start a workflow; return `BLOCKED: <reason>` if required input is unavailable. Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline finding you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline findings are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
 **Spec sub-agent prompt** should include:
 
@@ -253,6 +248,26 @@ End with a short, reader-facing summary in this order:
    standards, spec gaps, and correctness where relevant; do not compute a
    cross-axis score or let strengths cancel out bugs. Include important review
    limitations here (for example, a missing spec or tests not run).
+4. **Verdict** — a merge gate, not a score. Write three lines:
+   - `Go — LGTM` or `No-go`.
+   - **Door:** `Two-way` (a normal revert or redeploy fully undoes it) or
+     `One-way`, which names the irreversible part (for example, a destructive
+     migration, a public API or webhook contract, data sent to external systems,
+     or a published package).
+   - **Why:** for No-go, the blocking findings by axis and `file:line`. For Go,
+     state that no blocker or major finding was found within the review scope,
+     and that minor improvements are non-blocking.
+
+   Give `Go` only when all of these are true: no completed axis has a `blocker`
+   or `major` finding; the Correctness axis completed (not blocked or missing);
+   and, for a one-way door, the irreversible part was actually inspected and is
+   gated, reversible by a forward fix, or has a stated rollback path. Otherwise
+   give `No-go`. A one-way door raises the bar: a concern about the irreversible
+   part that could cause permanent harm counts as `major`, and unresolved doubt
+   about it is a No-go with a question to the author. A two-way door lowers it:
+   do not block on minor or speculative concerns. Other limitations, such as a
+   missing spec or tests that were not run, stay visible but do not block on
+   their own.
 
 This summary is an explanation of the change and its quality, **not a violation
 scoreboard**. Do not use per-axis counts, severity tallies, or “worst issue per
@@ -273,6 +288,10 @@ Illustrative summary (use only facts established for the actual review):
 > **What needs attention**
 > - The default generation path can fail before producing a document, blocking the main user flow.
 > - Abandoned jobs can still be billed, which does not match the cancellation requirements.
+>
+> **Verdict:** No-go
+> **Door:** Two-way — the job runner and billing hook revert cleanly.
+> **Why:** Correctness blocker in `jobs/generate.ts:42` and a Spec major on cancellation billing.
 
 ### 6. PR comments (optional)
 
@@ -280,15 +299,20 @@ Only if the review targets a PR — detected because the user referenced one, or
 Otherwise skip this step silently.
 
 1. Fetch existing review comments; drop any finding already raised.
-2. Select findings to post. A finding qualifies for an inline comment only if
-   BOTH hold:
+2. Select findings to post. A `blocker` or `major` finding qualifies for an
+   inline comment only if BOTH hold:
    - it is a documented-standard violation, a Spec finding, or a Correctness
-     finding (baseline smells only if clearly severe), AND
+     finding (baseline findings only if clearly severe), AND
    - its cited source is verifiable and directly on point: the quoted rule or
      spec line exists verbatim in the source file and plainly covers the case.
      If the citation requires stretching or paraphrase to fit, downgrade:
      severe findings move to the summary comment as observations; the rest
      are dropped.
+
+   A `minor` finding, including a baseline judgement call, qualifies when it
+   names the concrete hunk and the benefit of changing it. Prefix it with
+   `Non-blocking:`, keep only those worth the author's time, and never present
+   it as a defect. Minor comments are allowed with either verdict.
 3. Draft one inline comment per finding, anchored to file + line:
    one-sentence issue + cited source, then a fix at the strongest honest level:
    - suggestion block, only when the fix is small, mechanical, and certain;
@@ -307,7 +331,8 @@ Otherwise skip this step silently.
      matches the finding; if it's blank or unrelated, adjust to the correct
      nearby line within the same hunk. Note every adjustment in the draft.
 5. Draft one summary comment using the narrative format from §5 (Aggregate):
-   **What this PR does**, **What went well**, and **What needs attention**.
+   **What this PR does**, **What went well**, **What needs attention**, and
+   **Verdict**. For Go, start the body with `LGTM`.
    Reflect the verified review outcome, not just the subset selected for new
    inline comments; already-raised issues may still matter to the overall
    explanation. Do not turn it back into per-axis counts or severity tallies.
@@ -317,7 +342,18 @@ Otherwise skip this step silently.
    before posting to the PR. The final pre-post summary must explain the PR and
    what went well or needs attention; do not append a count-based recap that
    replaces it. If draft validation changed or dropped a finding, update the
-   summary to match the verified evidence before showing it.
+   summary and verdict to match the verified evidence before showing it. Show
+   the review event that will be used. Post only after the user confirms, unless
+   they already asked you to post.
+7. Submit the summary and inline comments as one review:
+   `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with `commit_id` set to the
+   reviewed head SHA, `body`, `comments`, and `event`:
+   - Go → `APPROVE`.
+   - No-go → `COMMENT`.
+
+   If the PR head moved since the review, stop and review the new commits
+   first; never approve unreviewed commits. GitHub rejects approval of your own
+   PR. When the viewer is the PR author, use `COMMENT` and keep the LGTM body.
 
 ### 7. Clean up reviewers
 

@@ -1,6 +1,6 @@
 ---
 name: pr-description
-description: Write or revise pull request titles and descriptions in STE-inspired plain technical English, with accurate Linear references. Use whenever creating, submitting, or updating a PR, including through another shipping or stack skill, or when asked to draft, shorten, or improve a PR description.
+description: Write or revise pull request titles and descriptions in STE-inspired plain technical English, with verified, clickable Linear and GitHub issue references. Use whenever creating, submitting, or updating a PR, including through another shipping or stack skill, or when asked to draft, shorten, or improve a PR description.
 ---
 
 # PR descriptions
@@ -32,7 +32,7 @@ The first visible content is a one- or two-sentence TLDR stating the change and 
 
 Most bodies should fit within 150 words, excluding diagrams, required tables, and evidence attachments; evidence prose still counts. Do not meet the word budget by packing more clauses into fewer paragraphs.
 
-Place an optional diagram immediately after the TLDR. Omit it when the TLDR already explains the change; a command invocation and output-file inventory are not a flow diagram.
+Place an optional diagram immediately after the TLDR. When no flow fits a chart, use a plain view from Diagrams instead. Omit the visual only when the TLDR already makes the change obvious; a command invocation and output-file inventory are not a flow diagram.
 
 Add only context the diff cannot show: a consequential trade-off, exposure and rollout constraints, compatibility risk, a stack dependency, or reviewer-actionable evidence. Link measured results for performance claims. For UI changes, include before/after screenshots and an interaction recording when required by the repository. State missing evidence instead of claiming verification.
 
@@ -59,6 +59,14 @@ Use a fenced `mermaid` diagram by default for GitHub PR bodies. Use a fenced `te
 - Keep arrow labels to a short condition or action, such as `new` or `retry`. Put commands, paths, flags, formats, limits, and caveats outside the chart. Retain an exact identifier only when it is needed to identify a boundary.
 - Show the changed connection or label before/after when the difference would otherwise be unclear. For a knowledge change, show which information reaches which agent or decision. Do not draw the whole system or narrate every arrow again below it.
 
+When the change has no flow or interaction worth a chart, such as a refactor, a moved responsibility, or new logic, show the smallest plain `text` view that makes the point:
+
+- a shallow file tree with a one-line responsibility note per entry, for layout or ownership changes;
+- a call tree or component tree, for a changed call path or UI structure, with new nodes marked `(new)`;
+- short pseudocode, for changed logic or an algorithm.
+
+Keep it under about 10 lines and show only the nodes that matter.
+
 ## Evidence
 
 Show concrete before/after evidence of the changed behavior, not merely that CI is green. Prefer before/after screenshots for visual changes when the environment supports capture (S-tier); include recordings for interaction changes when useful or required. Otherwise use execution-based evidence (A-tier): a focused test, console output, or a measured run.
@@ -69,23 +77,27 @@ Follow repository evidence rules: when test output is excluded from PR bodies, u
 
 ## Merge Danger
 
+Open the section with two label paragraphs, then the prose below:
+
+```markdown
+**Door:** two-way | one-way
+
+**Blast radius:** <one or two words, such as "webhook credits">
+```
+
 State whether the change is a two-way door (cheap to roll back) or a one-way door (destructive or hard to reverse), and why. Name the rollback action and what it cannot undo. A code revert alone does not restore deleted data, reverse external effects, or guarantee compatibility with already-written state.
 
 Describe the plausible blast radius: affected users, consumers, data, and deployment boundaries, plus important failure modes. For UI changes, consider layout shifts and mobile responsiveness; for APIs or shared code, consider downstream breakage and version skew. Explain containment such as a flag or limited rollout when present. Avoid an exhaustive hypothetical checklist or an unsupported “low risk.”
 
-## Linear references
+## Issue links
 
-End the body with `## Linear` when a real ticket applies. Put one plain-text reference on each line:
+End the body with one compact linked line per applicable issue, without a heading or bullets. Default to `Linear: [SCA-4314](<verified-issue-url>)` or `GitHub: [#123](<verified-issue-url>)`. Use `owner/repo#123` as the link label for a cross-repository GitHub issue. Do not leave the identifier as plain text or rely on automatic linking.
 
-| Reference            | Use when                                                    |
-| -------------------- | ----------------------------------------------------------- |
-| `Closes ABC-123`     | Merging this PR completes the ticket's acceptance criteria. |
-| `Part of ABC-123`    | This PR advances the ticket, but work remains.              |
-| `Related to ABC-123` | The ticket provides context; this PR does not complete it.  |
+Use the canonical issue URL returned by the tracker or verified from the supplied link; never invent a workspace, repository, or issue slug. If verification fails, disclose the gap rather than fabricate a link. Omit issue lines when no real issue applies; examples and placeholders do not belong in a published PR.
 
-Verify each ticket and relationship. If completion is uncertain, do not use `Closes`. For a stack, intermediate layers use `Part of`; use `Closes` only on the PR whose merge completes the ticket. A merge into a stack branch is not necessarily completion on the target branch. Omit the section when no ticket applies; never insert a placeholder into a real PR.
+Keep navigation separate from completion claims. Use `Closes` only when merging completes the acceptance criteria, `Part of` when work remains, and `Related to` for context only. For a stack, intermediate layers are `Part of`; merging into a stack branch is not necessarily completion on the target branch.
 
-These lines can drive Linear automation. Follow the repository's integration conventions; do not assume every repository maps keywords to the same status changes. Do not manually change Linear status or post a Linear comment just to accompany a PR description.
+Repository-required headings and automation syntax take precedence over the compact default. Preserve required keywords and plain-text references when the integration needs them, but still provide a clickable issue link. Do not assume a navigation link changes issue status or that Markdown links preserve keyword automation. Do not manually change tracker status or post an issue comment just to accompany a PR description.
 
 ## Example
 
@@ -121,11 +133,13 @@ assert credit grant count == 1
 
 ## Merge Danger
 
+**Door:** two-way
+
+**Blast radius:** upgrade credits
+
 Two-way door for code if the stored event ID remains compatible with the previous version. Reverting reopens duplicate-grant risk and cannot undo issued credits. The blast radius is upgrade-webhook credit grants.
 
-## Linear
-
-Closes BILL-123
+Linear: [BILL-123](https://linear.app/example/issue/BILL-123)
 
 ## Before delivery
 
@@ -135,6 +149,4 @@ Before publishing, make a separate readability pass:
 2. Scan only the TLDR, headings, and diagram labels. They should reveal the change and where to find its scope and evidence. Remove any diagram that adds no useful information.
 3. Check Mermaid syntax and, when a preview is available, the rendered layout and arrow labels. Move inline explanations into prose or delete them. For an ASCII fallback, check width and box spacing.
 
-Recheck the title, behavioral claims, diagram connections, evidence, rollback assumptions, blast radius, and ticket relationships against the latest diff. Remove stale claims after review changes. Preserve valid evidence and required sections when editing a body.
-
-Drafting does not authorize publishing: use `gh` to create or edit a PR only when the user or active workflow authorizes it. After publishing, read back the title and body to verify blank-line separation, fences, and references.
+Recheck the title, behavioral claims, diagram connections, evidence, rollback assumptions, blast radius, and issue relationships against the latest diff. Check that every issue reference has an explicit Markdown link to the verified issue URL and uses the compact heading-free format unless repository rules require otherwise. Remove stale claims after review changes. Preserve valid evidence and required sections when editing a body.
