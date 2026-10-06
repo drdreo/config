@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents, reports them side by side, and ends with a go/no-go verdict (one-way or two-way door) that can approve the PR with LGTM. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents, reports them side by side, and ends with a go/no-go verdict (one-way or two-way door) that approves the PR with LGTM or posts the blocking findings. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
 ---
 
 ## Mode selection
@@ -35,7 +35,8 @@ three-pass exploration. Do not run the full-review process or post PR comments.
    speculative refactors, and external issue/spec lookup unless the user supplies
    that context. Prioritize risky changes; disclose anything left unreviewed
    rather than silently escalating to the full workflow.
-3. **Report briefly.** Give a sentence describing the change, then one list of
+3. **Report briefly.** Link the PR when reviewing one (never a bare number).
+   Give a sentence describing the change, then one list of
    actionable findings ordered by severity. Each finding needs `file:line`, a
    concrete failure scenario/impact, and a fix direction when known. No three-axis
    headings, quotas, or forced praise. If none, say "No actionable issues found
@@ -87,42 +88,17 @@ Prefer the repository's project-local issue-tracker guidance and fall back to th
 
 ### 1. Pin the fixed point
 
-Whatever the user said is the fixed point (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If they didn't specify one, ask for it.
+Use the ref or PR the user gave; ask if there is none. Review the diff against
+the merge-base (for a PR, its actual base/head), and confirm it resolves and is
+non-empty before spawning reviewers.
 
-Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
+### 1a. Consider the PR stack
 
-Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents.
-
-### 1a. Read the PR's stack context
-
-For a GitHub PR, check whether it belongs to a stack before judging scope or
-rollout safety. Use `gh` to read the target's full description and base/head
-branches, then inspect explicit stack links or markers and PRs whose base/head
-branches connect to it. A shared title, author or ordinary cross-reference alone
-does not establish a stack.
-
-Follow the identified parent/child chain and read the **full descriptions of all
-stack members**, including relevant merged prerequisites. Do not substitute PR
-titles, search snippets or an agent summary for those reads. Record the ordering,
-URLs, states and pinned base/head SHAs, plus each member's stated responsibility
-and deployment sequence. If discovery or a description read fails, report partial
-stack coverage rather than treating the PR as standalone.
-
-Inspect related PR diffs when needed to verify a dependency, deferred requirement,
-activation gate or rollout claim. Keep the reviewed diff pinned to the requested
-PR's actual base/head; reading stack context does not turn this into a full review
-of every member. Label descriptions-only context separately from code verified.
-
-Judge both the requested PR on its own deployment and the promised stack sequence.
-Do not flag work explicitly assigned to a later member as missing here, but verify
-that the earlier member is safe independently. Deferred defaults do not prove all
-producer paths are inactive; check optional/manual paths too. A stacked or merged
-PR does not prove deployment, and a later fix does not erase an earlier unsafe
-rollout window.
-
-Give every reviewer the same stack map, full descriptions or readable evidence
-paths, and the boundary between reviewed code and context-only members. Include
-the stack assumptions and any uninspected dependency in the final scope report.
+If the PR is part of a stack, understand its place in it before judging scope or
+rollout safety. Review only this PR's diff, using the other members as context.
+Do not flag work that a later member owns. Do check that this PR is safe if it
+deploys alone. Give every reviewer the same stack context, and report what you
+could not verify.
 
 ### 2. Identify the spec source
 
@@ -150,28 +126,22 @@ These are judgement calls, never hard violations. A documented repo standard ove
 
 When running through Herdr:
 
-1. Before creating panes, inspect the current labels with `herdr pane current --current` and the workspace/tab commands. Preserve user-chosen names; replace default or agent-generated labels. For a PR review, use `pr-<number>` for the workspace and name the tab with the intent, such as `Review login timeout fix`, rather than leaving it as `1`. Summarize the PR title and available context yourself in 3–7 plain-language words; do not start a separate model or agent for naming. For a non-PR review, summarize the requested change. If only the PR number is known, use `Review PR #<number>` temporarily, then update it after reading the PR. Use explicit IDs from the responses and do not change focus.
-2. Create one sibling pane per active axis in the current tab, with the review working directory as its `cwd` and without changing focus. Label each new pane by its axis (`Standards`, `Spec`, or `Correctness`) using `herdr pane rename`; an agent name alone does not label the pane.
-3. Start a Pi agent in each pane, using concise role names such as `standards-review`, `spec-review`, and `correctness-review`. Preserve the parent review's provider, model, thinking level, approval mode, and isolation flags.
-4. Resolve the lead's own live pane with `herdr pane current --current` and record its pane ID and agent identity as the helpers' recipient. Give each helper a task/axis key and an explicit `report_to` naming this lead, not the lead's upstream recipient. State whether the lead will wait and collect output (the default here) or expects asynchronous delivery under the Herdr protocol. Start all agents first, then submit every prompt without waiting. After all prompts are in flight, wait for and read each result. Do not serialize the review by using a wait flag on the first prompt.
-5. Keep the panes available through aggregation and immediate follow-up work. Close panes this run created once their results are consumed and no reviewer follow-up is pending; keep them only when the user asked to inspect them or the workflow explicitly awaits another reviewer turn.
+- Name the workspace and tab after the review (for a PR, `pr-<number>` and a
+  short intent such as `Review login timeout fix`), keeping user-chosen names.
+- Open one sibling pane per active axis, labeled `Standards`, `Spec`, or
+  `Correctness`, without stealing focus. Start a Pi agent in each with the
+  lead's own provider, model, thinking level, and approval settings.
+- Start every reviewer before waiting on any, so the axes run in parallel.
 
 Include this routing instruction in **every active sub-agent's prompt**, with
-actual values substituted before submission:
-"You are the <axis> helper for review task <task-key>. Your immediate parent and
-only report recipient is the review lead <lead-agent-identity> at
-report_to=<lead-pane-id>. Do not report to the workspace coordinator, the lead's
-upstream recipient, or sibling reviewers. Delivery mode: <collected-output or
-asynchronous>. In collected-output mode, return findings or BLOCKED in your
-normal final output; the lead is waiting and collecting it, so do not send a
-second agent prompt or completion notification. In asynchronous mode, deliver
-only to this verified review lead using the Herdr delivery protocol. If the lead
-is unavailable or delivery is uncertain, retain the result and mark delivery
-pending; never reroute it to the coordinator. Route approval needs and failures
-to the lead by the same path; do not ask the user or approve actions yourself."
+real values filled in:
+"You are the <axis> helper for review task <task-key>. Report only to the
+review lead <lead-agent-identity> at report_to=<lead-pane-id>, never to the
+workspace coordinator or sibling reviewers. Return findings or BLOCKED as your
+final output; send approval needs and failures to the lead the same way. If
+delivery fails, keep the result and mark it pending instead of rerouting it."
 
-For detached subprocesses, use `collected-output` and identify the parent review
-lead/process instead of inventing Herdr IDs.
+For detached subprocesses, collect each reviewer's output directly.
 
 Include this reporting instruction in **every active sub-agent's prompt**:
 "After your findings, note up to two concrete strengths supported by the diff
@@ -231,6 +201,11 @@ Present the detailed findings under `## Standards`, `## Spec`, and
 limitations distinct from findings. Do **not** merge or rerank the detailed
 findings, because the axes are deliberately separate (see _Why separate axes_).
 
+Start the report with a title line that links the PR, such as
+`[PR #123: Fix login timeout](https://github.com/<owner>/<repo>/pull/123): <verdict>`.
+Take the URL from `gh pr view --json url,title`. Link the PR wherever the
+report names it; never leave a bare PR number.
+
 End with a short, reader-facing summary in this order:
 
 1. **What this PR does** — 1–5 short lines in plain language explaining the
@@ -278,6 +253,8 @@ equal number of positives and negatives.
 
 Illustrative summary (use only facts established for the actual review):
 
+> **[PR #123: Move document generation to a job](https://github.com/example/app/pull/123): No-go**
+>
 > **What this PR does**
 > Moves document generation into a background job so users can leave the page
 > while work continues, and ties billing to the job's outcome.
@@ -293,7 +270,7 @@ Illustrative summary (use only facts established for the actual review):
 > **Door:** Two-way — the job runner and billing hook revert cleanly.
 > **Why:** Correctness blocker in `jobs/generate.ts:42` and a Spec major on cancellation billing.
 
-### 6. PR comments (optional)
+### 6. Post the review
 
 Only if the review targets a PR — detected because the user referenced one, or `gh pr view` resolves the current branch to an open PR. 
 Otherwise skip this step silently.
@@ -319,17 +296,10 @@ Otherwise skip this step silently.
    - one-sentence direction, when the fix is known but needs context;
    - acceptance condition or a question to the author, when the fix is not
      known. Never invent a fix to satisfy the format.
-4. **Validate line targets against the diff** before showing drafts — this
-   prevents API 422 errors and misplaced comments:
-   - Fetch per-file patches: `gh api repos/{owner}/{repo}/pulls/{n}/files --jq '.[] | {filename, patch}'`.
-   - Parse `@@ -old,count +new,count @@` hunk headers. A single-line comment's
-     line must fall within a hunk's new-file range; a range comment needs both
-     ends in the same hunk (if split across hunks, use the last line only).
-   - A line outside every hunk → convert to a file-level comment
-     (`subject_type: "file"`, prepend `**Line {n}:** ` to the body).
-   - Read the actual file at each target line and confirm the code there
-     matches the finding; if it's blank or unrelated, adjust to the correct
-     nearby line within the same hunk. Note every adjustment in the draft.
+4. **Validate line targets** before posting. Each comment must land on
+   a line inside the PR's diff hunks that shows the code the finding describes;
+   GitHub rejects lines outside a hunk. Move a misplaced comment to the right
+   line in the same hunk, or make it a file-level comment, and note the change.
 5. Draft one summary comment using the narrative format from §5 (Aggregate):
    **What this PR does**, **What went well**, **What needs attention**, and
    **Verdict**. For Go, start the body with `LGTM`.
@@ -338,30 +308,28 @@ Otherwise skip this step silently.
    explanation. Do not turn it back into per-axis counts or severity tallies.
    May include up to two one-sentence observations for findings downgraded in
    step 2; label them as observations or judgement calls, not confirmed defects.
-6. Show the narrative summary first, followed by the inline-comment drafts,
-   before posting to the PR. The final pre-post summary must explain the PR and
-   what went well or needs attention; do not append a count-based recap that
-   replaces it. If draft validation changed or dropped a finding, update the
-   summary and verdict to match the verified evidence before showing it. Show
-   the review event that will be used. Post only after the user confirms, unless
-   they already asked you to post.
-7. Submit the summary and inline comments as one review:
-   `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with `commit_id` set to the
-   reviewed head SHA, `body`, `comments`, and `event`:
-   - Go → `APPROVE`.
-   - No-go → `COMMENT`.
+6. If draft validation changed or dropped a finding, update the summary and
+   verdict to match before posting.
+7. Post without waiting for confirmation. Submit the summary and inline
+   comments as one review: `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with
+   `commit_id` set to the reviewed head SHA, `body`, `comments`, and `event`:
+   - Go → `APPROVE`, with minor findings as non-blocking inline comments.
+   - No-go → `COMMENT`, with the blocking findings inline.
 
-   If the PR head moved since the review, stop and review the new commits
-   first; never approve unreviewed commits. GitHub rejects approval of your own
-   PR. When the viewer is the PR author, use `COMMENT` and keep the LGTM body.
+   If the PR head moved since the review, review the new commits first; never
+   approve unreviewed commits. GitHub rejects approval of your own PR. When the
+   viewer is the PR author, use `COMMENT` and keep the LGTM body.
+8. Report back with the PR link, the verdict, and what was posted. Flag to the
+   user, at the top, only what needs their judgement: a one-way door, a
+   blocker with real user or data impact, or a decision the code cannot settle.
+   Hold the post and flag instead when posting could do harm: a review axis did
+   not complete, the head moved and could not be re-reviewed, or a finding
+   would expose an exploitable security detail in a public thread.
 
 ### 7. Clean up reviewers
 
-After aggregation and any immediate PR-comment work:
-
-1. Confirm every reviewer has settled and its result was captured.
-2. Close only Herdr panes created by this run. Wait for and reap detached reviewer processes; remove run-owned temporary prompt/result files.
-3. Verify the recorded reviewer resources are gone. If a follow-up turn is explicitly pending, keep only the resources it needs and clean them up as soon as that turn finishes.
+Once every result is captured and no reviewer follow-up is pending, close the
+panes, processes, and temporary files this run created, and nothing else.
 
 ## Why separate axes
 
