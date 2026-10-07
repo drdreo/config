@@ -186,7 +186,11 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
   | Performance | DB queries, loops over data, batch operations, hot paths | N+1 queries, algorithmic cost, caching |
   | Deployment safety | migrations, API schemas, config/infra files | breaking changes, rollback safety, flag/migration ordering |
 
-### 5. Aggregate
+### 5. Aggregate for the user
+
+This report is for the requesting user or coordinator, not the PR thread.
+Keep the narrative summary, review process, evidence and limitations here;
+GitHub receives only the author-facing feedback defined in §6.
 
 The review lead collects every active axis result before delivering the combined
 review. Missing or blocked axes remain explicit limitations, not successful
@@ -275,7 +279,9 @@ Illustrative summary (use only facts established for the actual review):
 Only if the review targets a PR — detected because the user referenced one, or `gh pr view` resolves the current branch to an open PR. 
 Otherwise skip this step silently.
 
-1. Fetch existing review comments; drop any finding already raised.
+1. Fetch existing review comments; do not duplicate findings already raised.
+   Keep unresolved findings in the verdict; add material new evidence to their
+   existing thread rather than repeating it in the review body.
 2. Select findings to post. A `blocker` or `major` finding qualifies for an
    inline comment only if BOTH hold:
    - it is a documented-standard violation, a Spec finding, or a Correctness
@@ -283,8 +289,8 @@ Otherwise skip this step silently.
    - its cited source is verifiable and directly on point: the quoted rule or
      spec line exists verbatim in the source file and plainly covers the case.
      If the citation requires stretching or paraphrase to fit, downgrade:
-     severe findings move to the summary comment as observations; the rest
-     are dropped.
+     severe findings remain observations in the private report; the rest
+     are dropped. Do not publish an unverified claim as a blocker.
 
    A `minor` finding, including a baseline judgement call, qualifies when it
    names the concrete hunk and the benefit of changing it. Prefix it with
@@ -300,22 +306,24 @@ Otherwise skip this step silently.
    a line inside the PR's diff hunks that shows the code the finding describes;
    GitHub rejects lines outside a hunk. Move a misplaced comment to the right
    line in the same hunk, or make it a file-level comment, and note the change.
-5. Draft one summary comment using the narrative format from §5 (Aggregate):
-   **What this PR does**, **What went well**, **What needs attention**, and
-   **Verdict**. For Go, start the body with `LGTM`.
-   Reflect the verified review outcome, not just the subset selected for new
-   inline comments; already-raised issues may still matter to the overall
-   explanation. Do not turn it back into per-axis counts or severity tallies.
-   May include up to two one-sentence observations for findings downgraded in
-   step 2; label them as observations or judgement calls, not confirmed defects.
-6. If draft validation changed or dropped a finding, update the summary and
-   verdict to match before posting.
-7. Post without waiting for confirmation. Submit the summary and inline
-   comments as one review: `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with
-   `commit_id` set to the reviewed head SHA, `body`, `comments`, and `event`:
-   - Go → `APPROVE`, with minor findings as non-blocking inline comments.
-   - No-go → `COMMENT`, with the blocking findings inline.
+5. Keep the review body minimal:
+   - Go: exactly `LGTM`, with worthwhile non-blocking comments inline.
+   - No-go: leave the body empty when new or existing inline/file-level
+     comments cover the blockers. Only when a verified blocker cannot be
+     covered there, use one short sentence stating the problem and needed fix.
+   Never copy §5's report into GitHub: no change summary, praise section,
+   axis recap, door classification, test log, or repeated inline findings.
+6. If draft validation changed or dropped a finding, reconcile the private
+   report and verdict before posting. Deduplication does not resolve a blocker.
+7. Post without waiting for confirmation. Submit the inline comments and minimal
+   body as one review: `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with
+   `commit_id` set to the reviewed head SHA, `comments`, and `event`:
+   - Go → `APPROVE`, with `body: "LGTM"`.
+   - No-go → `COMMENT`, omitting `body` when it is empty. If the API requires
+     a nonempty body, use only `See inline comments.`
 
+   If all blockers already have comments and there is no new feedback, skip
+   posting another No-go review; report the verdict privately instead.
    If the PR head moved since the review, review the new commits first; never
    approve unreviewed commits. GitHub rejects approval of your own PR. When the
    viewer is the PR author, use `COMMENT` and keep the LGTM body.

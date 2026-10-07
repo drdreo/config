@@ -52,10 +52,10 @@ Cut implementation inventories and self-review chronology. Summarize the final b
 
 ## Diagrams
 
-Use a fenced `mermaid` diagram by default for GitHub PR bodies. Use a fenced `text` ASCII diagram only when the target does not render Mermaid or the user requests it. Show relationships, not an alternate prose description.
+Use a fenced `text` ASCII diagram by default. Switch to a fenced `mermaid` diagram only when the chart needs more than five nodes or branches that ASCII cannot draw cleanly, and the target renders Mermaid. Show relationships, not an alternate prose description.
 
-- Use at most five nodes with short labels of one to five words. Prefer a simple `flowchart TD`; use a sequence diagram when interaction order is the change.
-- Prefer a vertical layout when a horizontal flow would need scrolling. Use simple node IDs and quoted labels; avoid custom styling and diagram features that require plugins.
+- Keep labels to one to five words. Keep ASCII diagrams under about 60 characters wide and 10 lines; cap Mermaid at about 10 nodes.
+- For Mermaid, prefer a simple `flowchart TD`; use a sequence diagram when interaction order is the change. Use neutral node IDs (`n1`, `n2`, `n3`) and quoted display labels. Words such as `call` and `end` have Mermaid grammar meanings even when labels are quoted. Avoid custom styling and diagram features that require plugins.
 - Keep arrow labels to a short condition or action, such as `new` or `retry`. Put commands, paths, flags, formats, limits, and caveats outside the chart. Retain an exact identifier only when it is needed to identify a boundary.
 - Show the changed connection or label before/after when the difference would otherwise be unclear. For a knowledge change, show which information reaches which agent or decision. Do not draw the whole system or narrate every arrow again below it.
 
@@ -109,11 +109,15 @@ Title: `fix(billing): prevent duplicate credits on webhook retries`
 
 Prevent duplicate credit grants when Stripe retries an upgrade webhook. Store the event ID with each grant and skip events already processed.
 
-```mermaid
-flowchart TD
-    webhook["Upgrade webhook"] --> check{"Event ID check"}
-    check -->|duplicate| skip["Skip"]
-    check -->|new| grant["Store ID + grant"]
+```text
+Upgrade webhook
+      |
+      v
+Event ID check --duplicate--> Skip
+      |
+     new
+      v
+Store ID + grant
 ```
 
 ## Scope
@@ -147,6 +151,6 @@ Before publishing, make a separate readability pass:
 
 1. Count words per prose paragraph, including the TLDR and evidence. Split or trim blocks over 45 words; do not hide the same wall of text in one long bullet.
 2. Scan only the TLDR, headings, and diagram labels. They should reveal the change and where to find its scope and evidence. Remove any diagram that adds no useful information.
-3. Check Mermaid syntax and, when a preview is available, the rendered layout and arrow labels. Move inline explanations into prose or delete them. For an ASCII fallback, check width and box spacing.
+3. For ASCII, check width, alignment, and arrow direction. For Mermaid, parse every final block with an available Mermaid parser or renderer; visual inspection of source is not validation. If none is available, disclose that syntax is unverified. When a preview is available, also check rendered layout and arrow labels. Move inline explanations into prose or delete them.
 
 Recheck the title, behavioral claims, diagram connections, evidence, rollback assumptions, blast radius, and issue relationships against the latest diff. Check that every issue reference has an explicit Markdown link to the verified issue URL and uses the compact heading-free format unless repository rules require otherwise. Remove stale claims after review changes. Preserve valid evidence and required sections when editing a body.
