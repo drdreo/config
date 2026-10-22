@@ -27,6 +27,14 @@ After (description): "Builds monthly revenue reports from billing exports. Use f
 
 After (workflow rule): "Before calculating revenue, read `references/revenue-definition.md`. If currency or refund treatment is unspecified, ask rather than assume."
 
+**Paragraph for a known concept**
+
+Before: "Make sure the migration can be run more than once without causing duplicate rows or errors. If it has already been applied, running it again should detect that and do nothing, so that retries after a partial failure are safe."
+
+After: "The migration is idempotent. Re-runs after partial failure must be safe; detect prior application by the `schema_version` row, not by table existence."
+
+The term carries the general property. The second sentence is the delta the term does not carry.
+
 **Duplicated global rule inside a skill**
 
 Before: "Remember to never commit secrets and always follow the repository's commit conventions."
@@ -92,7 +100,7 @@ Proposed regression screen, not a validated sample size.
 ## Review report shape
 
 1. Verdict (one or two sentences).
-2. Section table: section, tag (keep / delete / move / enforce / test), reason.
+2. Section table: section, tag (keep / delete / compress / move / enforce / test), reason.
 3. Proposed file or diff, marked as proposal; safety and permission lines unchanged or explicitly called out.
 4. Infrastructure items (hooks, schemas, tests) listed separately.
 5. Pilot plan and what remains unverified.

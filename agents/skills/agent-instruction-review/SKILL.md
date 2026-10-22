@@ -19,6 +19,7 @@ For each paragraph ask: what observable mistake does it prevent, or what unavail
 
 - **Keep.** Non-obvious project facts, output contracts, scope and permission limits, consequential safety constraints. State condition and action directly. Never soften a real prohibition to "prefer".
 - **Delete.** Duplicates, generic "be excellent" advice, background the model already has, unsupported guarantees ("ensures perfect results"), persona inflation ("world-class engineer").
+- **Compress to a term.** If a paragraph explains a concept the model already knows, replace it with the term and keep only what the paragraph adds beyond the term's standard meaning. Test: would a fresh model given just the term reproduce the paragraph? If yes, the paragraph goes. If the project's usage differs from the standard meaning, the difference stays next to the term. Do not compress into fuzzy words ("robust", "clean", "production-ready"); those expand into the model's defaults, not yours.
 - **Move.** Rare procedures go to a focused skill. Schemas, examples and background go to a named reference with an explicit "read when" condition. Prerequisites and safety boundaries stay visible before risky actions.
 - **Enforce mechanically.** Formatting, schema validity, forbidden tool calls and test gates belong in formatters, schemas, permissions, tests or narrow hooks. Prose explains the rule and the recovery; it does not enforce. Adding a hook is a separate implementation decision; flag it, do not assume it.
 - **Test.** Anything whose effect you cannot predict from reading. Mark it for the pilot in step 5.
@@ -33,6 +34,7 @@ Replace impossible certainty and overbroad triggers with a condition, an action 
 - Skill descriptions state what the skill produces and when to use it, plus one near-miss it is not for. Not a workflow, not a guarantee.
 - Reference files are neutral facts with source, version and known gaps. No motivational language, no global behavioral commands.
 - Keep references one level deep from the main file and say when to read each.
+- Prefer a precise term over a paraphrase of it. Prefer a paraphrase over a term that carries baggage you do not want (naming a methodology imports its ceremony).
 
 ## 4. Check claims against evidence, not folklore
 
@@ -47,7 +49,7 @@ A review that changes behavior needs a before/after pilot. Give the user the pil
 Deliver, in this order:
 
 1. Verdict in one or two sentences: how much can go, what must stay, main risk.
-2. Table of paragraphs or sections with tag (keep, delete, move, enforce, test) and a one-line reason.
+2. Table of paragraphs or sections with tag (keep, delete, compress, move, enforce, test) and a one-line reason.
 3. Proposed rewritten file or diff, clearly marked as a proposal. Preserve every permission and safety line, or call out explicitly where one changed and why.
 4. Items that need infrastructure (hooks, schemas, tests) listed separately.
 5. The pilot plan and what was not verified.
