@@ -77,13 +77,17 @@ Follow repository evidence rules: when test output is excluded from PR bodies, u
 
 ## Merge Danger
 
-Open the section with two label paragraphs, then the prose below:
+Open the section with three label paragraphs, then the prose below:
 
 ```markdown
 **Door:** two-way | one-way
 
 **Blast radius:** <one or two words, such as "webhook credits">
+
+**Risk:** low | mid | high
 ```
+
+Choose one risk level based on failure likelihood and impact, accounting for verification gaps and containment. Briefly justify it in the prose; easy rollback alone does not mean low risk.
 
 State whether the change is a two-way door (cheap to roll back) or a one-way door (destructive or hard to reverse), and why. Name the rollback action and what it cannot undo. A code revert alone does not restore deleted data, reverse external effects, or guarantee compatibility with already-written state.
 
@@ -141,6 +145,10 @@ assert credit grant count == 1
 
 **Blast radius:** upgrade credits
 
+**Risk:** mid
+
+Risk is mid because incorrect deduplication could skip legitimate credit grants, and before/after execution is unverified.
+
 Two-way door for code if the stored event ID remains compatible with the previous version. Reverting reopens duplicate-grant risk and cannot undo issued credits. The blast radius is upgrade-webhook credit grants.
 
 Linear: [BILL-123](https://linear.app/example/issue/BILL-123)
@@ -153,4 +161,4 @@ Before publishing, make a separate readability pass:
 2. Scan only the TLDR, headings, and diagram labels. They should reveal the change and where to find its scope and evidence. Remove any diagram that adds no useful information.
 3. For ASCII, check width, alignment, and arrow direction. For Mermaid, parse every final block with an available Mermaid parser or renderer; visual inspection of source is not validation. If none is available, disclose that syntax is unverified. When a preview is available, also check rendered layout and arrow labels. Move inline explanations into prose or delete them.
 
-Recheck the title, behavioral claims, diagram connections, evidence, rollback assumptions, blast radius, and issue relationships against the latest diff. Check that every issue reference has an explicit Markdown link to the verified issue URL and uses the compact heading-free format unless repository rules require otherwise. Remove stale claims after review changes. Preserve valid evidence and required sections when editing a body.
+Recheck the title, behavioral claims, diagram connections, evidence, rollback assumptions, blast radius, risk level, and issue relationships against the latest diff. Check that every issue reference has an explicit Markdown link to the verified issue URL and uses the compact heading-free format unless repository rules require otherwise. Remove stale claims after review changes. Preserve valid evidence and required sections when editing a body.
