@@ -15,6 +15,7 @@ Facts checked 2026-10-22 against vendor docs. Loading semantics are harness- and
 |---|---|---|
 | Always-loaded rules (CLAUDE.md, AGENTS.md, global rules) | Durable project exceptions, key commands, scope and permission boundaries, short routing pointers to skills or references | A codebase encyclopedia; every task's procedure; duplicated tool docs |
 | Task prompt | This job's goal, inputs, scope, output and acceptance check | Repeating global rules; scripting every reasoning step |
+| Subagent brief (one agent to another) | Goal, evidence so far, constraints, return format: all a fresh receiver needs, since it sees none of the conversation | Pointers to context the receiver cannot see |
 | SKILL.md | One reusable workflow: what and when in metadata; inputs, essential steps, stop conditions, verification | Generic expertise claims; unrelated workflows; every possible reference inline |
 | Reference or knowledge file | Definitions, schemas, factual constraints, examples, canonical source and version, known gaps | Motivational language; undocumented guesses; global behavioral commands |
 | Executable controls (tests, schemas, formatters, permissions, hooks) | Anything that must hold regardless of what the model decides | Assuming a prose prohibition blocks execution |

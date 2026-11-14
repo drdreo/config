@@ -47,6 +47,12 @@ Before: "NEVER run destructive git commands."
 
 After: keep a one-line statement of the boundary and recovery, and flag separately: "Enforce with a permission deny rule or PreToolUse hook; prose alone does not block the call."
 
+**Brief that leans on unseen context**
+
+Before: "Fix the auth issue we discussed and let me know when it's done."
+
+After: "Goal: `login()` in `src/auth/session.ts` returns 500 on an expired refresh token; it should return 401. Known: the token check itself is correct. Constraints: edit only `src/auth/`. Return: the diff, the test command and its result, anything unverified."
+
 ## Workflow skill skeleton
 
 ```markdown
@@ -96,11 +102,12 @@ Proposed regression screen, not a validated sample size.
 - Metrics: task pass rate; trigger precision and recall; scope violations; needed-reference retrieval; input, output and cached tokens, billed cost, latency. Mark infrastructure failures separately. Score full task success separately from success after correct triggering.
 - Judging: inspect artifacts and full traces; deterministic checks where possible; blinded human review for subjective quality. "Command appeared" and "file exists" are not pass criteria.
 - Decision: adopt when the targeted failure improves, no safety regression appears, and quality meets a predeclared tolerance at acceptable cost. If unclear, keep the simpler baseline and collect more real failures.
+- Single line: remove it, rerun a task it targets in fresh sessions with the same three repeats, and restore it if the targeted failure returns. This adapts a whole-skill removal test and is itself untested.
 
 ## Review report shape
 
 1. Verdict (one or two sentences).
-2. Section table: section, tag (keep / delete / compress / move / enforce / test), reason.
+2. Section table: section, tag (keep / delete / compress / move / enforce / add / test), reason.
 3. Proposed file or diff, marked as proposal; safety and permission lines unchanged or explicitly called out.
 4. Infrastructure items (hooks, schemas, tests) listed separately.
 5. Pilot plan and what remains unverified.

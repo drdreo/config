@@ -1,11 +1,11 @@
 # Evidence on instruction length, skills and context
 
-Checked 2026-10-22. Results are author-reported, not reproduced. Use these to justify or refuse an edit; cite the limit together with the claim.
+Checked 2026-10-22; E16–E19 added 2026-11-15 from the full text (E17 without its threats section). Results are author-reported, not reproduced. Use these to justify or refuse an edit; cite the limit together with the claim.
 
 ## Contents
 - What is supported
 - What is not established
-- Source notes E1–E15
+- Source notes E1–E19
 - Practitioner sources
 
 ## What is supported
@@ -15,6 +15,9 @@ Checked 2026-10-22. Results are author-reported, not reproduced. Use these to ju
 - Selecting a skill and executing it correctly are different failures; measure both (E2, E3).
 - Long, distracting context and very high constraint density degrade performance under the studied conditions (E11–E13).
 - Vendor guides already recommend restraint, evaluations before documentation, and conditional references (E1, E5, E6).
+- Stale paths and claims in a skill lead the agent into failures (E18).
+- Grading a document's text can raise the grade and leave the agent unchanged; compare runs with and without the document instead (E18).
+- One vendor reports cutting most of a system prompt for newer models with no measured loss, by replacing rigid rules and examples with goals (E19).
 
 ## What is not established
 
@@ -24,6 +27,9 @@ Checked 2026-10-22. Results are author-reported, not reproduced. Use these to ju
 - That moving text to references by itself improves task success.
 - That AI-assisted drafting is inferior to human-only drafting (E10 measured self-generated skills under one setup).
 - That a prose prohibition is enforcement (E5).
+- That a smell's prevalence shows harm; neither smell catalog measured task outcomes (E16, E17).
+- That an optimizer's few-point gain on a skill is real at one repository's task count (E18).
+- That fewer rules suit every model or harness; E19 covers two models, one harness and unpublished evaluations.
 
 ## Source notes
 
@@ -44,8 +50,16 @@ Checked 2026-10-22. Results are author-reported, not reproduced. Use these to ju
 | E13 | Chroma, Context Rot (2025) | 18 models; degradation with input length at fixed task complexity; non-uniform distractor effects. | Retrieval vendor; simple tasks; does not isolate instruction length. |
 | E14 | Leviathan et al., Prompt Repetition Improves Non-Reasoning LLMs, arXiv 2512.14982 (2025-12-17, Google Research) | Repeating the whole input: 47 wins, 0 losses in 70 model–task tests (McNemar p<.1); with step-by-step reasoning 5 wins, 1 loss, 22 ties. | Experiments Feb–Mar 2025; permissive threshold; Anthropic models got slower on very long requests. Not about repeating MUST in skills. |
 | E15 | Diátaxis, Reference | "Neutral description is the key imperative of technical reference." Consistent structure, facts, examples, links to procedures. | Human documentation design; applying it to agent knowledge files is synthesis. |
+| E16 | dos Santos et al., Configuration Smells in AGENTS.md Files, arXiv 2606.15828 v5 (2026-07-30), SCAM 2026 | 100 popular repositories (39 AGENTS.md, 61 CLAUDE.md); six smells from a 14-document grey-literature review. LLM-flagged → confirmed by the first author: lint leakage 62 → 58, skill leakage 35 → 29, conflicting instructions 28 → 16, blind reference 16 → 14. Threshold-only: context bloat 42 (200 lines or more), init fossilization 24 (single commit). 91 files had at least one smell. | No task-outcome measurement; harm is assumed, not shown. The abstract reports flagged counts. Context bloat reuses the vendor 200-line target as its detector. One author confirmed the flags; skill-leakage precision is 86% in the text and 82% in the table. |
+| E17 | Hong et al., From Anatomy to Smells: An Empirical Study of SKILL.md in Agent Skills, arXiv 2607.01456 v2 (2026-07-03) | 238 sampled skills; 26 smells made by inverting best practices from a 29-source review, by majority vote where sources disagreed; 20 of 26 are absences. Detector: 5 by script, 21 by an LLM classifier, weighted F1 0.78 on 53 labeled skills. Mean 10.5 smells per skill; one skill smell-free. Both under-specified and over-prescribed guidance count as smells. | Impact on agent performance "remains an open question". Smells restate practitioner advice, so prevalence is not harm; the most common (no guard against skipping steps) is in 94% of skills. The prevalence table says 228 skills, the text 238. |
+| E18 | Kozyrev et al., Skill Issue: Lessons from Optimizing Repository SKILLs for Coding Agents, arXiv 2609.12742 (2026-09-11) | Three Kotlin repositories, Claude Code with Sonnet 4.6, tasks mined from merged pull requests reverted at one base commit, each run paired against an empty-document run. GEPA +4.9 pp mean, SkillOpt +0.1 pp. Skills optimized across historical commits stated layouts that no longer existed, and "the agent followed that advice into failures". Grading the document itself raised the grade and left the agent unchanged. | Not significant: 20–26 held-out tasks per repository, best sign-test p = 0.29; the authors place the gain inside run-to-run variance. One maintainer reviewed the documents. |
+| E19 | Anthropic (Shihipar), The new rules of context engineering for Claude 5 generation models, claude.dev/blog (2026-07-24) | Reports removing over 80% of Claude Code's system prompt for Opus 5 and Fable 5 with "no measurable loss on our coding evaluations". Rigid rules gave way to goals; examples were found to narrow what newer models try; conflicting instructions across system prompt, skills and user requests cost extra reasoning. Skills should not be "overconstrained, except in highly important areas". | Vendor post; evaluations unpublished; one harness, two models. Not evidence for older models or other vendors' models. |
 
 ## Practitioner sources
 
 - HumanLayer, Writing a good CLAUDE.md: good critique of irrelevant instructions and pointers over prose; its 150–200 instruction budget overgeneralizes E11; its "Anthropic has no official recommendation" is outdated against E5.
 - obra/superpowers writing-skills: useful failure-first testing, negative cases, fresh-context repeats. Its "NO SKILL WITHOUT A FAILING TEST FIRST" and delete-untested-drafts rules are a project methodology, not an established law. Its advice that descriptions say only when to use conflicts with the spec's what-plus-when.
+- softaworks skill-judge: useful split of expert, activation (known but not applied unprompted) and redundant knowledge, and matching rigidity to the cost of a mistake. Its 120-point score, grade bands and ratio targets are unvalidated, and its MANDATORY and NEVER prescriptions run against E19.
+- Addy Osmani, Audit your agent files (2026-08-27): useful habit of archiving, then rerunning a task without the local skills. It tests whole skills, not single lines, and its figures are second-hand (E16's flagged counts among them).
+- ctxlint: deterministic stale-path and stale-command checks are sound. Its "74%" headline is never calculated, its 91% precision is self-reported on a handful of repositories, and root-relative path checks misfire in monorepos.
+- Inkeep, Writing high-quality prompts: sub-agent prompts carry scope and non-goals, an output format treated as a shared interface, and escalation rules; handoffs carry goal, evidence and constraints. Vendor convention; no measurement.
