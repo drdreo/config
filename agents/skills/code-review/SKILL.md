@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents, reports them side by side, and ends with a go/no-go verdict (one-way or two-way door) that approves the PR with LGTM or posts the blocking findings. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along three axes: Standards (does the code follow this repo's documented coding standards?), Spec (does the code match what the originating issue/spec asked for?), and Correctness (bugs, edge cases, regression risk). By default, runs the reviews in parallel sub-agents, reports them side by side, and ends with a go/no-go verdict (one-way or two-way door). Posts inline findings on your own PRs without self-approval or LGTM; on others' PRs, approves with LGTM or posts findings. With quick, simple, --quick, or an explicit quick/simple review request, runs a single in-session bugs/regressions pass instead. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
 ---
 
 ## Mode selection
@@ -279,6 +279,13 @@ Illustrative summary (use only facts established for the actual review):
 Only if the review targets a PR — detected because the user referenced one, or `gh pr view` resolves the current branch to an open PR. 
 Otherwise skip this step silently.
 
+Before choosing the review event or body, compare the PR author's login from
+`gh pr view --json author` with the authenticated login from `gh api user` on
+the PR's GitHub host. If they match, this is a **self-review**: publish only
+inline/file-level findings or substantive replies to existing finding threads,
+never an approval, LGTM, or standalone summary. If identity cannot be verified,
+hold posting and report the limitation privately.
+
 1. Fetch existing review comments; do not duplicate findings already raised.
    Keep unresolved findings in the verdict; add material new evidence to their
    existing thread rather than repeating it in the review body.
@@ -296,6 +303,13 @@ Otherwise skip this step silently.
    names the concrete hunk and the benefit of changing it. Prefix it with
    `Non-blocking:`, keep only those worth the author's time, and never present
    it as a defect. Minor comments are allowed with either verdict.
+
+   If a suggested change would unnecessarily expand the PR's scope and is not
+   required for correctness, safety, or the agreed spec, suggest a separate
+   follow-up instead of requesting it in this PR. Prefix the comment with
+   `Non-blocking follow-up:`, name the benefit and proposed follow-up scope,
+   and do not make it a merge condition. Never defer a genuine blocker or
+   major finding merely because its fix is large.
 3. Draft one inline comment per finding, anchored to file + line:
    one-sentence issue + cited source, then a fix at the strongest honest level:
    - suggestion block, only when the fix is small, mechanical, and certain;
@@ -307,8 +321,10 @@ Otherwise skip this step silently.
    GitHub rejects lines outside a hunk. Move a misplaced comment to the right
    line in the same hunk, or make it a file-level comment, and note the change.
 5. Keep the review body minimal:
-   - Go: exactly `LGTM`, with worthwhile non-blocking comments inline.
-   - No-go: leave the body empty when new or existing inline/file-level
+   - Self-review, either verdict: omit the body. If no new findings or substantive
+     thread replies remain after deduplication, post nothing; report privately.
+   - Go on someone else's PR: exactly `LGTM`, with worthwhile non-blocking comments inline.
+   - No-go on someone else's PR: leave the body empty when new or existing inline/file-level
      comments cover the blockers. Only when a verified blocker cannot be
      covered there, use one short sentence stating the problem and needed fix.
    Never copy §5's report into GitHub: no change summary, praise section,
@@ -318,15 +334,17 @@ Otherwise skip this step silently.
 7. Post without waiting for confirmation. Submit the inline comments and minimal
    body as one review: `gh api repos/{owner}/{repo}/pulls/{n}/reviews` with
    `commit_id` set to the reviewed head SHA, `comments`, and `event`:
-   - Go → `APPROVE`, with `body: "LGTM"`.
-   - No-go → `COMMENT`, omitting `body` when it is empty. If the API requires
-     a nonempty body, use only `See inline comments.`
+   - Self-review, either verdict → `COMMENT`, with findings and no `body`.
+     If GitHub rejects the bodyless review, report the failure; do not substitute
+     LGTM or a filler comment. Keep findings that cannot be anchored private.
+   - Go on someone else's PR → `APPROVE`, with `body: "LGTM"`.
+   - No-go on someone else's PR → `COMMENT`, omitting `body` when it is empty.
+     If the API requires a nonempty body, use only `See inline comments.`
 
    If all blockers already have comments and there is no new feedback, skip
    posting another No-go review; report the verdict privately instead.
    If the PR head moved since the review, review the new commits first; never
-   approve unreviewed commits. GitHub rejects approval of your own PR. When the
-   viewer is the PR author, use `COMMENT` and keep the LGTM body.
+   approve unreviewed commits. The self-review rules apply regardless of verdict.
 8. Report back with the PR link, the verdict, and what was posted. Flag to the
    user, at the top, only what needs their judgement: a one-way door, a
    blocker with real user or data impact, or a decision the code cannot settle.
