@@ -2,6 +2,7 @@
 
 ## Contents
 - Rewrite patterns
+- Dated-pattern signals
 - Workflow skill skeleton
 - Reference file skeleton
 - Before/after pilot
@@ -51,6 +52,18 @@ After: keep a one-line statement of the boundary and recovery, and flag separate
 Before: "Fix the auth issue we discussed and let me know when it's done."
 
 After: "Goal: `login()` in `src/auth/session.ts` returns 500 on an expired refresh token; it should return 401. Known: the token check itself is correct. Constraints: edit only `src/auth/`. Return: the diff, the test command and its result, anything unverified."
+
+## Dated-pattern signals
+
+Greppable hints that a line was written for an older model or has outlived its context. A match is a candidate for the Test tag, not a finding; keep it if a current failure or a real constraint backs it.
+
+- Pressure: dense capitalized MUST, NEVER, CRITICAL, IMPORTANT; emphasis with no reason beside it; `you tend to` trait claims.
+- Hedges on requirements: `try to`, `if possible`, `ideally`.
+- Choreography: `STEP 1:` scripts for judgment work; fixed update cadences; numeric word caps; "think step by step".
+- Prohibition runs: three or more `Do not`, `Never`, `Avoid` lines in a row with no stated reason.
+- Suppressors: "don't narrate", "no interim updates", "never use bullets".
+- Fossils: retired model names, date conditionals, `now`, `no longer` or `instead of` attached to a rule, incident or PR numbers.
+- Duplicates that disagree across files that load together.
 
 ## Workflow skill skeleton
 
