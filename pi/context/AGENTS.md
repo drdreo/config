@@ -1,8 +1,8 @@
 # Worktree location
 
-Create every new Git worktree under `<parent>/<project>-worktrees/<task>/`, beside the primary project checkout. Derive `<parent>` and `<project>` from the primary checkout, not from another worktree.
+Create every new Git worktree under `<parent>/<project>-worktrees/<project>/<task>/`, beside the primary project checkout. Derive `<parent>` and `<project>` from the primary checkout, not from another worktree.
 
-For example, `/Users/andreashahn/lovable` uses `/Users/andreashahn/lovable-worktrees/<task>/`, not `/Users/andreashahn/lovable-<task>` or a directory inside the repository. If tooling requires another location, ask first. Do not move existing worktrees unless requested.
+For example, `/Users/andreashahn/lovable` uses `/Users/andreashahn/lovable-worktrees/lovable/<task>/`, not `/Users/andreashahn/lovable-<task>` or a directory inside the repository. If tooling requires another location, ask first. Do not move existing worktrees unless requested.
 
 # Scope approval
 
