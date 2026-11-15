@@ -71,6 +71,8 @@ Keep it under about 10 lines and show only the nodes that matter.
 
 Show concrete before/after evidence of the changed behavior, not merely that CI is green. Prefer before/after screenshots for visual changes when the environment supports capture (S-tier); include recordings for interaction changes when useful or required. Otherwise use execution-based evidence (A-tier): a focused test, console output, or a measured run.
 
+Embed screenshots and recordings with `gh pr create|edit --body-file BODY.md --attach before.png` (gh ≥ 2.99.0): reference the local path as `![alt](before.png)` in the body and gh swaps in the uploaded URL; never upload through the GitHub web UI.
+
 Name the exact test or scenario and its observed result before and after. Use brief, labeled pseudocode to explain the same case failing before the fix and passing afterward; link the real test or run. Pseudocode is an explanation, not execution evidence. Never invent runs, screenshots, or results. If either side was not run, state that gap and the reviewer action needed.
 
 Follow repository evidence rules: when test output is excluded from PR bodies, use accepted behavioral evidence instead. Do not add tests solely to fill this section or bypass the repository's test policy. Keep long output in `<details>`.
