@@ -15,7 +15,7 @@ Checked 2026-10-22; E16–E19 added 2026-11-15 from the full text (E17 without i
 - Selecting a skill and executing it correctly are different failures; measure both (E2, E3).
 - Long, distracting context and very high constraint density degrade performance under the studied conditions (E11–E13).
 - Vendor guides already recommend restraint, evaluations before documentation, and conditional references (E1, E5, E6).
-- Stale paths and claims in a skill lead the agent into failures (E18).
+- Stale paths and claims in a skill led the agent into failures in one study of three repositories (E18).
 - Grading a document's text can raise the grade and leave the agent unchanged; compare runs with and without the document instead (E18).
 - One vendor reports cutting most of a system prompt for newer models with no measured loss, by replacing rigid rules and examples with goals (E19).
 
@@ -59,7 +59,7 @@ Checked 2026-10-22; E16–E19 added 2026-11-15 from the full text (E17 without i
 
 - HumanLayer, Writing a good CLAUDE.md: good critique of irrelevant instructions and pointers over prose; its 150–200 instruction budget overgeneralizes E11; its "Anthropic has no official recommendation" is outdated against E5.
 - obra/superpowers writing-skills: useful failure-first testing, negative cases, fresh-context repeats. Its "NO SKILL WITHOUT A FAILING TEST FIRST" and delete-untested-drafts rules are a project methodology, not an established law. Its advice that descriptions say only when to use conflicts with the spec's what-plus-when.
-- softaworks skill-judge: useful split of expert, activation (known but not applied unprompted) and redundant knowledge, and matching rigidity to the cost of a mistake. Its 120-point score, grade bands and ratio targets are unvalidated, and its MANDATORY and NEVER prescriptions run against E19.
+- softaworks skill-judge: useful split of expert, activation (known but not applied unprompted) and redundant knowledge, and matching rigidity to the cost of a mistake. Its 120-point score, grade bands and ratio targets are unvalidated, and E19 advises against its MANDATORY and NEVER prescriptions for newer models.
 - Addy Osmani, Audit your agent files (2026-08-27): useful habit of archiving, then rerunning a task without the local skills. It tests whole skills, not single lines, and its figures are second-hand (E16's flagged counts among them).
 - ctxlint: deterministic stale-path and stale-command checks are sound. Its "74%" headline is never calculated, its 91% precision is self-reported on a handful of repositories, and root-relative path checks misfire in monorepos.
 - Inkeep, Writing high-quality prompts: sub-agent prompts carry scope and non-goals, an output format treated as a shared interface, and escalation rules; handoffs carry goal, evidence and constraints. Vendor convention; no measurement.

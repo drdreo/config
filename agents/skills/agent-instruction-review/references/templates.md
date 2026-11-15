@@ -5,7 +5,6 @@
 - Workflow skill skeleton
 - Reference file skeleton
 - Before/after pilot
-- Review report shape
 
 ## Rewrite patterns
 
@@ -103,11 +102,3 @@ Proposed regression screen, not a validated sample size.
 - Judging: inspect artifacts and full traces; deterministic checks where possible; blinded human review for subjective quality. "Command appeared" and "file exists" are not pass criteria.
 - Decision: adopt when the targeted failure improves, no safety regression appears, and quality meets a predeclared tolerance at acceptable cost. If unclear, keep the simpler baseline and collect more real failures.
 - Single line: remove it, rerun a task it targets in fresh sessions with the same three repeats, and restore it if the targeted failure returns. This adapts a whole-skill removal test and is itself untested.
-
-## Review report shape
-
-1. Verdict (one or two sentences).
-2. Section table: section, tag (keep / delete / compress / move / enforce / add / test), reason.
-3. Proposed file or diff, marked as proposal; safety and permission lines unchanged or explicitly called out.
-4. Infrastructure items (hooks, schemas, tests) listed separately.
-5. Pilot plan and what remains unverified.
